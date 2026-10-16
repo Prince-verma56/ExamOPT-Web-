@@ -72,7 +72,7 @@ export default function RootLayout({
       <head>
         <MotionGateScript />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Providers>
           <SmoothScrollProvider>
             <TooltipProvider>

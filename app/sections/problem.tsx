@@ -75,60 +75,65 @@ const WHEEL_CARDS: OrbitalImageWheelImage[] = [
 
 export function ProblemSection() {
   return (
-    <section
-      id="problem"
-      className="relative z-20 -mt-10 sm:-mt-14 lg:-mt-16 rounded-t-[36px] sm:rounded-t-[48px] lg:rounded-t-[56px] overflow-hidden bg-[#faf9f5] border-t border-white/90 shadow-[0_-20px_50px_rgba(15,23,42,0.06)] scroll-mt-20"
-    >
-      {/* ── 1. Text Content at Top ─────────────────────────────────── */}
-      <header
-        aria-labelledby="problem-heading"
-        className="mx-auto flex max-w-[840px] flex-col items-center px-5 pb-10 pt-16 text-center sm:px-8 sm:pb-12 sm:pt-20 lg:pb-14 lg:pt-24"
+    <div className="relative w-full bg-[#eef2ff]">
+      <section
+        id="problem"
+        className="relative z-10 w-full rounded-t-[36px] sm:rounded-t-[48px] lg:rounded-t-[56px] overflow-hidden bg-[#faf9f5] border-t border-white/90 shadow-[0_-20px_50px_rgba(15,23,42,0.06)] scroll-mt-20"
       >
-        <p className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.25em] text-[#1a62ff] sm:text-[11px]">
-          <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
-          The Scheduling Problem
-          <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
-        </p>
-
-        <h2
-          id="problem-heading"
-          className="mt-3.5 text-[2.2rem] font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-[2.8rem] lg:text-[3.3rem]"
+        {/* The introduction deliberately occupies its own normal-flow area.
+            Keeping it out of the pinned scene prevents cards from ever
+            passing behind or through the editorial copy. */}
+        <header
+          aria-labelledby="problem-heading"
+          className="mx-auto flex min-h-[min(62svh,520px)] max-w-[840px] flex-col items-center justify-center px-5 py-16 text-center sm:px-8 sm:py-20 lg:min-h-[560px] lg:py-24"
         >
-          One timetable. <br className="hidden sm:block" />
-          <span className="font-normal italic text-[#1a62ff]">
-            A hundred moving parts.
-          </span>
-        </h2>
-
-        <div className="mx-auto mt-4 max-w-[620px]">
-          <p className="text-sm font-normal leading-relaxed text-slate-600 sm:text-[15px]">
-            Students, rooms, fixed slots and practical requirements all compete for the
-            same sessions. A single change can ripple through the entire timetable.
+          <p className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.25em] text-[#1a62ff] sm:text-[11px]">
+            <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
+            The Scheduling Problem
+            <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
           </p>
-          <div className="mt-3">
-            <Link
-              href="#how-it-works"
-              className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a62ff] transition-colors hover:text-[#0e52e2] sm:text-[13px]"
-            >
-              See how ExamOpt resolves constraints
-              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
-        </div>
-      </header>
 
-      {/* ── 2. Pinned Circular Gallery Animation with Smooth Scrolling ─── */}
-      <OrbitalImageWheel
-        images={WHEEL_CARDS}
-        turns={1.2}
-        scrollLength={360}
-        scrollSensitivity={0.55}
-        itemWidth={290}
-        itemHeight={370}
-        cropRatio={0.7}
-        captionOffset={10}
-        className="bg-transparent"
-      />
-    </section>
+          <h2
+            id="problem-heading"
+            className="mt-3.5 text-[2.2rem] font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-[2.8rem] lg:text-[3.3rem]"
+          >
+            One timetable. <br className="hidden sm:block" />
+            <span className="font-normal italic text-[#1a62ff]">
+              A hundred moving parts.
+            </span>
+          </h2>
+
+          <div className="mx-auto mt-4 max-w-[620px]">
+            <p className="text-sm font-normal leading-relaxed text-slate-600 sm:text-[15px]">
+              Students, rooms, fixed slots and practical requirements all compete for the
+              same sessions. A single change can ripple through the entire timetable.
+            </p>
+            <div className="mt-3">
+              <Link
+                href="#how-it-works"
+                className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a62ff] transition-colors hover:text-[#0e52e2] sm:text-[13px]"
+              >
+                See how ExamOpt resolves constraints
+                <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* The gallery is a separate, centered full-frame scene below the copy. */}
+        <OrbitalImageWheel
+          images={WHEEL_CARDS}
+          turns={1.2}
+          scrollLength={380}
+          scrollSensitivity={0.5}
+          itemWidth={275}
+          itemHeight={355}
+          cropRatio={0.7}
+          captionOffset={6}
+          wheelTop="clamp(320px, 46vh, 500px)"
+          className="border-t border-[#e8e4dc] bg-[#fdfcf9]"
+        />
+      </section>
+    </div>
   );
 }

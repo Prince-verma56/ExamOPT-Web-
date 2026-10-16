@@ -45,7 +45,7 @@ export function ExamOptFooter() {
   };
 
   return (
-    <footer className="relative z-20 -mt-12 sm:-mt-16 lg:-mt-20 rounded-t-[36px] sm:rounded-t-[48px] lg:rounded-t-[56px] overflow-hidden backdrop-blur-2xl bg-white/90 border-t border-white/95 shadow-[0_-20px_50px_rgba(15,23,42,0.07)] text-slate-800">
+    <footer className="relative z-20 mt-0 rounded-t-[36px] sm:rounded-t-[48px] lg:rounded-t-[56px] overflow-hidden backdrop-blur-2xl bg-white/95 border-t border-white/95 shadow-[0_-16px_40px_rgba(15,23,42,0.06)] text-slate-800">
 
       {/* ── 1. Top Operational Ribbon ─────────────────────────────────── */}
       <div className="border-b border-slate-200/70 bg-slate-50/50 backdrop-blur-md">

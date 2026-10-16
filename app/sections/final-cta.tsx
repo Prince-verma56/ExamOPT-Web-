@@ -49,8 +49,8 @@ export function FinalCTA() {
         </div>
       </Container>
 
-      {/* Campus photograph: sky fades into the canvas, forecourt meets the footer */}
-      <div className="relative -mt-6 h-[clamp(300px,38vw,560px)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_30%)] sm:-mt-10 lg:-mt-16">
+      {/* Campus photograph: sky fades into the canvas at top, forecourt softly meets canvas at bottom */}
+      <div className="relative -mt-6 h-[clamp(300px,38vw,560px)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent_0%,black_25%,black_92%,transparent_100%)] sm:-mt-10 lg:-mt-16">
         <div data-cta-photo className="absolute inset-0 origin-bottom">
           <Image
             src="/Images/BG Images/Elegant Neoclassical Campus Facade.png"

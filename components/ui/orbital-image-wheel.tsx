@@ -69,6 +69,8 @@ export interface OrbitalImageWheelProps {
   subtitleSpeed?: number;
   /** Delay between subtitle character reveals in seconds. @default 0.018 */
   subtitleStagger?: number;
+  /** Optional custom CSS top offset for the wheel center. Defaults to adaptive clamp based on children presence. */
+  wheelTop?: string;
   /** Optional scrollable container element used as the animation scroller. */
   scrollContainerRef?: RefObject<HTMLElement | null>;
   /** Additional class name on the root element. */
@@ -221,6 +223,7 @@ export function OrbitalImageWheel({
   subtitleDirection = DEFAULT_SUBTITLE_DIRECTION,
   subtitleSpeed = DEFAULT_SUBTITLE_SPEED,
   subtitleStagger = DEFAULT_SUBTITLE_STAGGER,
+  wheelTop,
   scrollContainerRef,
   className,
   children,
@@ -343,9 +346,11 @@ export function OrbitalImageWheel({
   useEffect(() => {
     const section = sectionRef.current;
     const wheel = wheelRef.current;
-    if (!section || !wheel || images.length === 0) return;
+    const viewport = viewportRef.current;
+    if (!section || !wheel || !viewport || images.length === 0) return;
 
     let previousActive = -1;
+    let createdTrigger: ScrollTrigger | null = null;
 
     const context = gsap.context(() => {
       const cards = Array.from(
@@ -423,7 +428,19 @@ export function OrbitalImageWheel({
         trigger: section,
         scroller: scrollContainerRef?.current ?? undefined,
         start: "top top",
-        end: "bottom bottom",
+        // The viewport is pinned for exactly the time needed to progress the
+        // wheel. ScrollTrigger supplies the spacer, so the following section
+        // begins as soon as the final image state is reached—without a static
+        // multi-viewport section leaving a blank area behind it.
+        end: () =>
+          `+=${Math.max(
+            1,
+            ((boundedScrollLength - 100) / 100) * window.innerHeight,
+          )}`,
+        pin: viewport,
+        pinSpacing: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
         scrub: true,
         onUpdate: (self) => {
           applyState(self.progress);
@@ -431,11 +448,17 @@ export function OrbitalImageWheel({
       });
 
       wheelScrollTriggerRef.current = trigger;
+      createdTrigger = trigger;
     }, sectionRef);
 
     ScrollTrigger.refresh();
 
-    return () => context.revert();
+    return () => {
+      if (wheelScrollTriggerRef.current === createdTrigger) {
+        wheelScrollTriggerRef.current = null;
+      }
+      context.revert();
+    };
   }, [
     scrollContainerRef,
     images,
@@ -450,6 +473,7 @@ export function OrbitalImageWheel({
     boundedFocusSpread,
     boundedScaleEffect,
     boundedScrollSensitivity,
+    boundedScrollLength,
   ]);
 
   useEffect(() => {
@@ -525,14 +549,13 @@ export function OrbitalImageWheel({
     <section
       ref={sectionRef}
       className={cn("relative w-full", className)}
-      style={{ height: `${boundedScrollLength}vh` }}
     >
       <div
         ref={viewportRef}
-        className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-between bg-inherit"
+        className="h-screen w-full overflow-hidden flex flex-col justify-between bg-inherit"
       >
         {children && (
-          <div className="relative z-40 pointer-events-auto w-full pt-8 sm:pt-10 lg:pt-12 px-4 sm:px-8">
+          <div className="relative z-40 pointer-events-auto w-full pt-5 sm:pt-7 lg:pt-8 px-4 sm:px-8">
             {children}
           </div>
         )}
@@ -543,7 +566,7 @@ export function OrbitalImageWheel({
           style={{
             width: boundedWheelSize,
             height: boundedWheelSize,
-            top: "clamp(240px, 35vh, 340px)",
+            top: wheelTop ?? (children ? "clamp(340px, 44vh, 400px)" : "clamp(260px, 36vh, 340px)"),
           }}
         >
           <div
