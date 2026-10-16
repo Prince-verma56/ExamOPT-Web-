@@ -10,6 +10,7 @@
 
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SplitText } from 'gsap/SplitText';
 
 let registered = false;
 
@@ -17,7 +18,7 @@ export function registerGsapPlugins(): void {
   if (registered) return;
   if (typeof window === 'undefined') return;
 
-  gsap.registerPlugin(ScrollTrigger);
+  gsap.registerPlugin(ScrollTrigger, SplitText);
   registered = true;
 }
 
@@ -39,4 +40,16 @@ export const motionDefaults = {
   staggerAmount: 0.1,
 } as const;
 
-export { gsap, ScrollTrigger };
+/**
+ * Viewport facts used to scale motion: full spatial effects on large screens,
+ * shorter distances on small ones, pointer effects only with a fine pointer.
+ */
+export function motionEnvironment() {
+  const mq = (query: string) => typeof window !== 'undefined' && window.matchMedia(query).matches;
+  return {
+    desktop: mq('(min-width: 1024px)'),
+    finePointer: mq('(hover: hover) and (pointer: fine)'),
+  };
+}
+
+export { gsap, ScrollTrigger, SplitText };

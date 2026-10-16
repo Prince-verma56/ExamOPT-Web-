@@ -54,18 +54,19 @@ const checks = [
 function ExamBlock({ exam }: { exam: PreviewExam }) {
   return (
     <div
+      data-exam-block
       className={cn(
         "relative rounded-[5px] border px-1.5 py-1 leading-tight",
         programTone[exam.program],
         exam.flagged && "ring-1 ring-warning ring-offset-1 ring-offset-white"
       )}
     >
-      <div className="flex items-center gap-1 text-[10px] font-semibold tracking-tight">
-        <span className="truncate">{exam.code}</span>
-        {exam.practical && !exam.fixed && <FlaskConical className="size-2.5 shrink-0 opacity-70" aria-label="Practical" />}
-        {exam.fixed && <Lock className="size-2.5 shrink-0 opacity-70" aria-label="Fixed slot" />}
+      <div className="truncate text-[10px] font-semibold tracking-[-0.01em]">{exam.code}</div>
+      <div className="flex items-center gap-1 text-[9px] opacity-70">
+        <span className="truncate">{exam.room}</span>
+        {exam.practical && !exam.fixed && <FlaskConical className="size-2.5 shrink-0" aria-label="Practical" />}
+        {exam.fixed && <Lock className="size-2.5 shrink-0" aria-label="Fixed slot" />}
       </div>
-      <div className="truncate text-[9px] opacity-70">{exam.room}</div>
     </div>
   );
 }
@@ -94,7 +95,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
   return (
     <figure
       className={cn(
-        "overflow-hidden rounded-2xl border border-[#e3e1da] bg-white text-foreground shadow-[0_1px_2px_rgba(23,32,51,0.04),0_24px_60px_-28px_rgba(23,32,51,0.28)]",
+        "@container overflow-hidden rounded-2xl border border-hairline bg-white text-foreground shadow-panel",
         className
       )}
       aria-label="Illustrative ExamOpt timetable preview using sample data"
@@ -111,25 +112,25 @@ export function ScheduleDashboard({ className }: { className?: string }) {
 
       <div className="flex">
         {/* Sidebar */}
-        <nav aria-hidden className="hidden w-[46px] shrink-0 border-r border-border/70 bg-[#fbfbf9] px-1.5 py-3 xl:block 2xl:w-[118px] 2xl:px-2">
+        <nav aria-hidden className="hidden w-[46px] shrink-0 border-r border-border/70 bg-[#fbfbf9] px-1.5 py-3 @3xl:block">
           <ul className="space-y-0.5">
             {navItems.map(({ label, icon: Icon, active }) => (
               <li
                 key={label}
                 className={cn(
-                  "flex items-center justify-center gap-2 rounded-md px-2 py-1.5 text-[10.5px] 2xl:justify-start",
+                  "flex items-center justify-center rounded-md px-2 py-1.5 text-[10.5px]",
                   active ? "bg-primary/[0.08] font-medium text-primary" : "text-muted-foreground"
                 )}
               >
                 <Icon className="size-3 shrink-0" />
-                <span className="hidden 2xl:inline">{label}</span>
+                <span className="sr-only">{label}</span>
               </li>
             ))}
           </ul>
         </nav>
 
         {/* Main timetable */}
-        <div className="min-w-0 flex-1 p-3 sm:p-4">
+        <div className="min-w-0 flex-1 p-3 @lg:p-4">
           <div className="mb-3 flex items-end justify-between gap-2">
             <div>
               <p className="text-[13px] font-semibold tracking-tight">Week 1 · Odd semester</p>
@@ -143,7 +144,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
           <div
             role="table"
             aria-label="Sample examination timetable"
-            className="grid grid-cols-[40px_repeat(3,minmax(0,1fr))] gap-1 sm:grid-cols-[44px_repeat(5,minmax(0,1fr))]"
+            className="grid grid-cols-[40px_repeat(3,minmax(0,1fr))] gap-1 @lg:grid-cols-[44px_repeat(5,minmax(0,1fr))]"
           >
             <div role="row" className="contents">
               <div role="columnheader">
@@ -153,7 +154,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
                 <div
                   role="columnheader"
                   key={d.key}
-                  className={cn("pb-1 text-center leading-tight", i > 2 && "hidden sm:block")}
+                  className={cn("pb-1 text-center leading-tight", i > 2 && "hidden @lg:block")}
                 >
                   <div className="text-[10.5px] font-medium">{d.weekday}</div>
                   <div className="text-[9.5px] text-muted-foreground">{d.date}</div>
@@ -172,7 +173,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
                     key={d.key}
                     className={cn(
                       "flex min-h-[78px] flex-col gap-1 rounded-md border border-dashed border-border/90 bg-[#fcfcfb] p-1",
-                      i > 2 && "hidden sm:flex"
+                      i > 2 && "hidden @lg:flex"
                     )}
                   >
                     {(PREVIEW_TIMETABLE[`${d.key}-${s.key}`] ?? []).map((exam) => (
@@ -201,7 +202,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
         </div>
 
         {/* Insight rail */}
-        <aside className="hidden w-[168px] shrink-0 border-l border-border/70 bg-[#fbfbf9] p-3 md:block">
+        <aside data-dash-rail className="hidden w-[168px] shrink-0 border-l border-border/70 bg-[#fbfbf9] p-3 @2xl:block">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">Checks</p>
           <ul className="space-y-1.5">
             {checks.map((c) => (
@@ -226,7 +227,7 @@ export function ScheduleDashboard({ className }: { className?: string }) {
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground">
             Room utilisation
           </p>
-          <div className="mb-2.5 flex items-center gap-2.5">
+          <div data-dash-meter className="mb-2.5 flex items-center gap-2.5">
             <UtilisationRing pct={74} />
             <div className="leading-tight">
               <div className="text-lg font-semibold tracking-tight tabular-nums">74%</div>
@@ -247,8 +248,8 @@ export function ScheduleDashboard({ className }: { className?: string }) {
         </aside>
       </div>
 
-      {/* Mobile-only compact check summary (rail is hidden below md) */}
-      <div className="flex items-center justify-between gap-2 border-t border-border/80 bg-[#fbfbf9] px-3.5 py-2 text-[10.5px] md:hidden">
+      {/* Compact check summary for narrow placements (the rail needs room) */}
+      <div className="flex items-center justify-between gap-2 border-t border-border/80 bg-[#fbfbf9] px-3.5 py-2 text-[10.5px] @2xl:hidden">
         <span className="inline-flex items-center gap-1.5 text-success">
           <Check className="size-3" strokeWidth={3} /> 3 checks passing
         </span>

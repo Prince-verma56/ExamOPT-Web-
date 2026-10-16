@@ -1,21 +1,25 @@
 /**
  * Two connected experiences — the administrator workspace and the student
- * timetable. Each panel crops its preview at the bottom edge so the device
- * imagery reads as part of the composition rather than floating on top.
+ * timetable. Each panel crops its preview at the edge so the device imagery
+ * reads as part of the composition, and the previews rise into place as the
+ * section scrolls into view.
  */
 
 import { Check, Clock, DoorOpen, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EXAMOPT_ROOMS } from "@/lib/examopt-data";
 import { ArrowLink, DisplayHeading, Em, Eyebrow, PreviewTag, Container } from "@/components/marketing/primitives";
+import { Parallax } from "@/components/marketing/motion";
 import { Reveal } from "@/components/marketing/reveal";
 
 function Checklist({ items }: { items: string[] }) {
   return (
-    <ul className="mt-6 grid gap-2.5 text-[14.5px] text-foreground/85">
+    <ul className="mt-7 grid gap-3 text-[15px] text-foreground/85">
       {items.map((item) => (
         <li key={item} className="flex items-start gap-2.5">
-          <Check className="mt-[3px] size-4 shrink-0 text-primary" strokeWidth={2.25} aria-hidden />
+          <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+            <Check className="size-3" strokeWidth={2.75} aria-hidden />
+          </span>
           {item}
         </li>
       ))}
@@ -30,7 +34,7 @@ function AdminWorkspacePreview() {
     <div
       aria-label="Data workspace preview showing the bundled room records"
       role="img"
-      className="overflow-hidden rounded-t-xl border border-b-0 border-[#e3e1da] bg-white shadow-[0_-1px_0_rgba(23,32,51,0.02),0_-20px_50px_-30px_rgba(23,32,51,0.3)]"
+      className="overflow-hidden rounded-tl-2xl border border-b-0 border-r-0 border-hairline bg-white shadow-[0_-24px_60px_-34px_rgb(23_32_51/0.35)]"
     >
       <div className="flex items-center gap-2 border-b border-border/80 bg-[#fbfbf9] px-4 py-2.5">
         <span className="size-2 rounded-full bg-[#e2ded3]" />
@@ -102,7 +106,7 @@ function StudentPhonePreview() {
     <div
       role="img"
       aria-label="Student timetable preview on a phone using sample data"
-      className="mx-auto w-[264px] rounded-t-[40px] border-[7px] border-b-0 border-[#1b2335] bg-[#1b2335] shadow-[0_-24px_60px_-30px_rgba(23,32,51,0.45)]"
+      className="mx-auto w-[272px] rounded-t-[42px] border-[7px] border-b-0 border-[#1b2335] bg-[#1b2335] shadow-[0_-30px_70px_-30px_rgb(23_32_51/0.5)]"
     >
       <div className="overflow-hidden rounded-t-[33px] bg-[#f7f6f2]">
         <div className="flex items-center justify-between px-6 pt-3 text-[10px] font-medium text-foreground">
@@ -156,18 +160,18 @@ function StudentPhonePreview() {
 
 export function AudiencesSection() {
   return (
-    <section id="product" aria-label="Administrator and student experiences" className="scroll-mt-20 bg-white py-20 lg:py-28">
+    <section id="product" aria-label="Administrator and student experiences" className="scroll-mt-20 bg-white py-24 lg:py-32">
       <Container>
-        <Reveal className="grid gap-5 lg:grid-cols-12" stagger={0.12}>
+        <Reveal className="grid gap-5 lg:grid-cols-12" stagger={0.14} y={36} start="top 78%">
           {/* Administrators */}
           <article
             data-reveal
             aria-labelledby="admin-heading"
-            className="flex flex-col overflow-hidden rounded-[22px] border border-[#ebe8df] bg-canvas lg:col-span-7"
+            className="flex flex-col overflow-hidden rounded-[28px] border border-hairline bg-canvas lg:col-span-7"
           >
-            <div className="p-7 sm:p-10">
+            <div className="p-7 sm:p-10 lg:p-12">
               <Eyebrow>For administrators</Eyebrow>
-              <DisplayHeading id="admin-heading" size="panel" className="mt-5 max-w-[16ch]">
+              <DisplayHeading id="admin-heading" size="panel" className="mt-6 max-w-[16ch]">
                 A focused workspace for <Em>complete control.</Em>
               </DisplayHeading>
               <Checklist
@@ -183,8 +187,10 @@ export function AudiencesSection() {
                 Explore the admin workspace
               </ArrowLink>
             </div>
-            <div className="mt-auto pl-7 sm:pl-10">
-              <AdminWorkspacePreview />
+            <div className="mt-auto h-[300px] overflow-hidden pl-7 sm:h-[340px] sm:pl-10 lg:pl-12">
+              <Parallax from={56} to={0} mobileScale={0.5}>
+                <AdminWorkspacePreview />
+              </Parallax>
             </div>
           </article>
 
@@ -193,11 +199,15 @@ export function AudiencesSection() {
             data-reveal
             id="students"
             aria-labelledby="student-heading"
-            className="flex scroll-mt-20 flex-col overflow-hidden rounded-[22px] border border-[#dfe5f3] bg-[#eff3fb] lg:col-span-5"
+            className="relative flex scroll-mt-20 flex-col overflow-hidden rounded-[28px] border border-[#dfe5f3] bg-primary-soft lg:col-span-5"
           >
-            <div className="p-7 sm:p-10">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -right-24 -top-24 size-[420px] rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.9),transparent)]"
+            />
+            <div className="relative p-7 sm:p-10 lg:p-12">
               <Eyebrow>For students</Eyebrow>
-              <DisplayHeading id="student-heading" size="panel" className="mt-5 max-w-[14ch]">
+              <DisplayHeading id="student-heading" size="panel" className="mt-6 max-w-[14ch]">
                 Your timetable, <Em>wherever you are.</Em>
               </DisplayHeading>
               <Checklist
@@ -207,16 +217,18 @@ export function AudiencesSection() {
                   "Get schedule-change information when available",
                 ]}
               />
-              <p className="mt-6 text-[13px] leading-relaxed text-muted-foreground">
-                The student web portal is available today. A Flutter companion app is planned for
-                a later phase, built on the same API.
+              <p className="mt-6 max-w-[36ch] text-[13.5px] leading-relaxed text-muted-foreground">
+                The student web portal is available today. A Flutter companion app is planned for a
+                later phase, built on the same API.
               </p>
               <ArrowLink href="/student" className="mt-6">
                 Open the student portal
               </ArrowLink>
             </div>
-            <div className="mt-auto pt-2">
-              <StudentPhonePreview />
+            <div className="relative mt-auto h-[300px] overflow-hidden pt-4 sm:h-[340px]">
+              <Parallax from={64} to={0} mobileScale={0.5}>
+                <StudentPhonePreview />
+              </Parallax>
             </div>
           </article>
         </Reveal>

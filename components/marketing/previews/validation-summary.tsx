@@ -23,25 +23,25 @@ export function ValidationSummaryPreview() {
 
       <ul className="mt-4 divide-y divide-border/70">
         {rows.map(({ icon: Icon, label, value, tone }) => (
-          <li key={label} className="flex items-center gap-2.5 py-2.5 text-[12.5px]">
+          <li key={label} data-val-row className="flex items-center gap-2.5 py-2.5 text-[12.5px]">
             <Icon className={cn("size-3.5 shrink-0", tone === "text-foreground" ? "text-muted-foreground" : tone)} aria-hidden />
             <span className="flex-1 text-foreground/85">{label}</span>
             <span className={cn("font-semibold tabular-nums", tone)}>{value}</span>
           </li>
         ))}
-        <li className="py-2.5 text-[12.5px]">
+        <li data-val-row className="py-2.5 text-[12.5px]">
           <div className="flex items-center gap-2.5">
             <Gauge className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <span className="flex-1 text-foreground/85">Average room utilisation</span>
             <span className="font-semibold tabular-nums text-foreground">74%</span>
           </div>
           <div aria-hidden className="ml-6 mt-2 h-1.5 overflow-hidden rounded-full bg-[#e8ecf5]">
-            <div className="h-full w-[74%] rounded-full bg-primary" />
+            <div data-val-meter className="h-full w-[74%] rounded-full bg-primary" />
           </div>
         </li>
       </ul>
 
-      <div className="mt-4 rounded-lg border border-[#ecd3d6] bg-[#fdf7f7] p-3">
+      <div data-val-note className="mt-4 rounded-lg border border-[#ecd3d6] bg-[#fdf7f7] p-3">
         <p className="text-[10.5px] font-medium uppercase tracking-[0.08em] text-destructive">Why MCA-104P was not placed</p>
         <p className="mt-1.5 text-[12.5px] leading-snug text-foreground/85">
           It needs a laboratory with at least 60 workstations, and every lab large enough is

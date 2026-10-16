@@ -1,16 +1,21 @@
 /**
- * ExamOpt Studio — Transparent by Design Section
- * Background: /Images/BG Images/Futuristic Exam Validation Dashboard.png
- * Layout matches reference design:
- * • Background shows 3D glass validation dashboard on the right
- * • Editorial text and 3 feature points anchored cleanly on the left
+ * ExamOpt Studio — Transparent by design
+ *
+ * The product visual leads: a validation workspace pairing the conflict graph
+ * with the validation report, plus one related-conflict callout. All values
+ * are illustrative sample data and labelled as such. The `transparency` scene
+ * builds the graph (nodes, then edges, then the conflict marker), lands the
+ * report rows and fills the utilisation meter once, then lets the callout
+ * drift at a different depth while scrolling.
  */
 
-"use client";
-
-import Image from "next/image";
-import { Lock, FileSearch, ShieldCheck } from "lucide-react";
+import { ArrowLeftRight, FileSearch, Lock, ShieldCheck } from "lucide-react";
+import { Scene } from "@/animations/page-scenes/scene";
+import { Container, Em, Eyebrow, Lede, PreviewTag } from "@/components/marketing/primitives";
+import { RevealHeading } from "@/components/marketing/motion";
 import { Reveal } from "@/components/marketing/reveal";
+import { ConflictGraphPreview } from "@/components/marketing/previews/conflict-graph";
+import { ValidationSummaryPreview } from "@/components/marketing/previews/validation-summary";
 
 const PRINCIPLES = [
   {
@@ -32,82 +37,109 @@ const PRINCIPLES = [
 
 export function TransparencySection() {
   return (
-    <section
+    <Scene
+      name="transparency"
       id="transparency"
       aria-labelledby="transparency-heading"
-      className="relative w-full min-h-[700px] lg:h-[860px] flex items-center overflow-hidden border-t border-[#ebe8df] bg-[#eff3fa] scroll-mt-20"
+      className="relative isolate scroll-mt-20 overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#edf1f8_18%,#edf1f8_80%,var(--canvas)_100%)] pb-36 pt-24 lg:pb-44 lg:pt-36"
     >
-      {/* ── Background: Futuristic Glass Dashboard ──────────────────────── */}
-      <div className="absolute inset-0 w-full h-full select-none pointer-events-none">
-        <Image
-          src="/Images/BG Images/Futuristic Exam Validation Dashboard.png"
-          alt="ExamOpt Studio 3D Glass Validation Dashboard"
-          fill
-          quality={95}
-          className="object-cover object-right select-none pointer-events-none"
-        />
-        {/* Subtle mobile fade so text remains 100% legible on small screens where image stacks */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent lg:hidden pointer-events-none" />
+      {/* Soft daylight and a faint technical grid behind the product */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute right-[-8%] top-[8%] h-[640px] w-[860px] rounded-full bg-[radial-gradient(closest-side,rgb(255_255_255/0.95),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(rgb(40_85_199/0.13)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(60%_55%_at_70%_50%,black,transparent)]" />
       </div>
 
-      {/* ── Left-Anchored Editorial Content ────────────────────────────── */}
-      <div className="relative z-10 w-full px-4 sm:px-8 lg:px-14 xl:px-20 py-20 lg:py-0">
-        <div className="max-w-[480px]">
-          <Reveal>
-            {/* Eyebrow */}
-            <div data-reveal>
-              <p className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#1a62ff]">
-                <span className="w-5 h-px bg-[#1a62ff]/60 inline-block" />
-                Transparent by Design
-              </p>
-            </div>
-
-            {/* Headline */}
-            <div data-reveal className="mt-4">
-              <h2
-                id="transparency-heading"
-                className="text-[2.2rem] sm:text-[2.8rem] lg:text-[3.2rem] font-bold tracking-tight text-slate-900 leading-[1.08]"
-              >
-                Every decision,{" "}
-                <br className="hidden sm:block" />
-                <span className="font-normal italic text-[#1a62ff]">
-                  explained.
-                </span>
-              </h2>
-            </div>
-
-            {/* Description */}
-            <div data-reveal className="mt-4">
-              <p className="text-sm sm:text-[15px] text-slate-600 leading-relaxed font-normal">
-                ExamOpt validates each timetable against your constraints and makes
-                conflicts and infeasible schedules understandable.
-              </p>
-            </div>
-
-            {/* 3 Principles with Icons */}
-            <div data-reveal className="mt-8 sm:mt-10 space-y-6">
+      <Container>
+        <div className="grid gap-14 lg:grid-cols-12 lg:items-center lg:gap-10">
+          {/* ── Editorial column ─────────────────────────────────────── */}
+          <div className="lg:col-span-5">
+            <Reveal>
+              <Eyebrow>Transparent by design</Eyebrow>
+            </Reveal>
+            <RevealHeading id="transparency-heading" className="mt-6">
+              Every decision, <Em>explained.</Em>
+            </RevealHeading>
+            <Reveal y={20}>
+              <Lede className="mt-6 max-w-[27rem]">
+                ExamOpt validates each timetable against your constraints and makes conflicts and
+                infeasible schedules understandable.
+              </Lede>
+            </Reveal>
+            <Reveal as="ul" className="mt-10 divide-y divide-[#d9e0ee] border-y border-[#d9e0ee]" y={16} stagger={0.1}>
               {PRINCIPLES.map(({ icon: Icon, title, body }) => (
-                <div key={title} className="flex items-start gap-4">
-                  {/* Icon circle */}
-                  <div className="size-11 rounded-2xl bg-white/90 border border-blue-200/70 shadow-[0_2px_8px_rgba(26,98,255,0.08)] flex items-center justify-center shrink-0">
-                    <Icon className="size-5 text-[#1a62ff]" />
-                  </div>
-
-                  {/* Text */}
+                <li key={title} data-reveal className="flex gap-4 py-5">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-primary shadow-[0_1px_2px_rgb(23_32_51/0.06)] ring-1 ring-primary/10">
+                    <Icon className="size-[18px]" strokeWidth={1.75} aria-hidden />
+                  </span>
                   <div>
-                    <h3 className="text-[14px] sm:text-[14.5px] font-bold text-slate-900 leading-snug">
-                      {title}
-                    </h3>
-                    <p className="mt-1 text-[12.5px] sm:text-[13px] text-slate-600 leading-relaxed">
-                      {body}
-                    </p>
+                    <h3 className="text-[15.5px] font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+                    <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{body}</p>
+                  </div>
+                </li>
+              ))}
+            </Reveal>
+          </div>
+
+          {/* ── Product composition ──────────────────────────────────── */}
+          <div className="relative lg:col-span-7 lg:pl-4">
+            <div data-graph-panel className="glass rounded-[26px] p-1.5">
+              <figure
+                aria-label="Validation workspace preview with a sample conflict graph and validation report"
+                className="overflow-hidden rounded-[21px] border border-hairline bg-white"
+              >
+                <div className="flex items-center justify-between gap-3 border-b border-hairline bg-[#fbfaf7] px-4 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2 text-[11.5px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">ExamOpt</span>
+                    <span aria-hidden>/</span>
+                    <span className="truncate">Validation</span>
+                  </div>
+                  <div aria-hidden className="hidden items-center gap-1 rounded-lg bg-[#f2f0ea] p-0.5 text-[11px] sm:flex">
+                    {["Conflicts", "Rooms", "Report"].map((t, i) => (
+                      <span
+                        key={t}
+                        className={i === 0 ? "rounded-md bg-white px-2.5 py-0.5 font-medium text-foreground shadow-sm" : "px-2.5 py-0.5 text-muted-foreground"}
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <PreviewTag>Sample data</PreviewTag>
+                </div>
+                <div className="grid divide-y divide-hairline md:grid-cols-[1.2fr_1fr] md:divide-x md:divide-y-0">
+                  <div className="p-5 sm:p-6">
+                    <ConflictGraphPreview />
+                  </div>
+                  <div className="p-5 sm:p-6">
+                    <ValidationSummaryPreview />
                   </div>
                 </div>
-              ))}
+                <figcaption className="sr-only">
+                  Illustrative example only — not the output of a scheduling run.
+                </figcaption>
+              </figure>
             </div>
-          </Reveal>
+
+            {/* Related conflict — floats at a different depth */}
+            <div data-depth="float" className="relative z-10 -mt-6 ml-4 w-[min(320px,calc(100%-2rem))] sm:absolute sm:bottom-0 sm:left-10 sm:ml-0 sm:mt-0 lg:-left-10">
+              <div data-float-chip className="glass rounded-2xl p-4 sm:translate-y-[82%]">
+                <div className="flex items-center justify-between">
+                  <p className="type-label text-[10px] text-muted-foreground">Related conflict</p>
+                  <PreviewTag>Sample</PreviewTag>
+                </div>
+                <p className="mt-3 flex items-center gap-2 text-[14px] font-semibold text-foreground">
+                  BCA-302
+                  <ArrowLeftRight className="size-3.5 text-destructive" aria-label="conflicts with" />
+                  BCADS-302
+                </p>
+                <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
+                  Shared students in the same session. Moving either paper to another session
+                  resolves it.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </Container>
+    </Scene>
   );
 }

@@ -31,8 +31,10 @@ export function useGsap(
 
     // gsap.context runs this function synchronously during construction, so the
     // context must come from its argument rather than the not-yet-assigned `ctx`.
+    // Returning the callback's result lets a callback register its own cleanup
+    // (event listeners, attributes) which the context runs on revert.
     const ctx = gsap.context((self: gsap.Context) => {
-      callback(gsap, self);
+      return callback(gsap, self);
     }, scope?.current ?? undefined);
 
     return () => {

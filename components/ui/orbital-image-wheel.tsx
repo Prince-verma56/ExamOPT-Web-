@@ -21,11 +21,14 @@ export interface OrbitalImageWheelImage {
   alt?: string;
   label?: string;
   subtitle?: string;
+  badge?: string;
 }
 
 export interface OrbitalImageWheelProps {
   /** Images displayed around the wheel. */
   images: OrbitalImageWheelImage[];
+  /** Optional header or content pinned at the top of the viewport */
+  children?: React.ReactNode;
   /** Number of full wheel turns during the scroll range. @default 4 */
   turns?: number;
   /** Maximum blur amount (px) away from the focus zone. @default 4 */
@@ -220,6 +223,7 @@ export function OrbitalImageWheel({
   subtitleStagger = DEFAULT_SUBTITLE_STAGGER,
   scrollContainerRef,
   className,
+  children,
 }: OrbitalImageWheelProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -503,8 +507,14 @@ export function OrbitalImageWheel({
     >
       <div
         ref={viewportRef}
-        className="sticky top-0 h-screen w-full overflow-hidden"
+        className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-between"
       >
+        {children && (
+          <div className="relative z-40 pointer-events-auto w-full pt-8 sm:pt-10 lg:pt-12 px-4 sm:px-8">
+            {children}
+          </div>
+        )}
+
         <div
           ref={wheelRef}
           className="absolute left-1/2 -translate-x-1/2"
@@ -521,7 +531,7 @@ export function OrbitalImageWheel({
             {images.map((img, i) => (
               <figure
                 key={i}
-                className="oiw-item absolute left-1/2 top-1/2 m-0 overflow-hidden rounded-xl"
+                className="oiw-item absolute left-1/2 top-1/2 m-0 overflow-hidden rounded-2xl border border-white/80 shadow-[0_12px_40px_rgba(15,23,42,0.12)] bg-white"
                 style={{ width: boundedItemWidth, height: boundedItemHeight }}
               >
                 <div
@@ -530,6 +540,21 @@ export function OrbitalImageWheel({
                   role="img"
                   aria-label={img.alt ?? img.label ?? `Image ${i + 1}`}
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20 pointer-events-none" />
+
+                {img.badge && (
+                  <div className="absolute top-3 right-3 z-10 rounded-full bg-white/90 backdrop-blur-md border border-white/80 px-2.5 py-0.5 text-[10.5px] font-semibold text-slate-800 shadow-xs">
+                    {img.badge}
+                  </div>
+                )}
+
+                {img.label && (
+                  <div className="absolute bottom-3 inset-x-3 z-10 rounded-xl bg-white/90 backdrop-blur-md border border-white/80 p-2.5 text-center shadow-xs">
+                    <p className="text-[11.5px] font-bold text-slate-900 tracking-tight truncate">
+                      {img.label}
+                    </p>
+                  </div>
+                )}
               </figure>
             ))}
           </div>

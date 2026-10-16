@@ -1,8 +1,10 @@
 /**
- * ExamOpt Studio — Marketing Navigation (Floating Glass Pill)
- * Aligned with the reference design:
- * Brand with grid mark, navigation links, search, Sign In, Open Workspace CTA,
- * and user profile avatar. Staggered entrance animation synced with hero video.
+ * ExamOpt Studio — Marketing navigation
+ *
+ * Sits on the page content grid. Transparent over the hero, then a light
+ * glass surface once the page scrolls. In-page links scroll through Lenis
+ * and show which section is in view. Its entrance is played by the hero
+ * scene (`data-nav-shell`); without JavaScript it is simply visible.
  */
 
 "use client";
@@ -10,213 +12,175 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Show, UserButton } from "@clerk/nextjs";
-import { ArrowRight, ChevronDown, Menu, Search, User as UserIcon } from "lucide-react";
+import { ArrowRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HAS_CLERK } from "@/components/auth/safe-auth-button";
 import { useScroll } from "@/animations/hooks/use-scroll";
-import { useSmoothScroll } from "@/animations/smooth-scroll";
+import { AnchorLink } from "@/components/marketing/anchor-link";
+import { BrandLockup, Container, ctaStyles } from "@/components/marketing/primitives";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-const navItems = [
-  { name: "Product", href: "#product", hasDropdown: true },
-  { name: "How It Works", href: "#how-it-works" },
+type NavItem = { name: string; href: `#${string}` } | { name: string; href: `/${string}` };
+
+const navItems: NavItem[] = [
+  { name: "Product", href: "#product" },
+  { name: "How it works", href: "#how-it-works" },
   { name: "Capabilities", href: "#capabilities" },
-  { name: "Student Portal", href: "/student" },
-  { name: "Resources", href: "#transparency" },
+  { name: "Transparency", href: "#transparency" },
+  { name: "Student portal", href: "/student" },
 ];
+
+/** Sections observed for the active indicator; the rest reset it. */
+const OBSERVED = ["top", "problem", "how-it-works", "capabilities", "product", "transparency"];
+
+function useActiveSection() {
+  const [active, setActive] = useState<string | null>(null);
+
+  useEffect(() => {
+    const els = OBSERVED.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => el !== null);
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActive(`#${entry.target.id}`);
+        }
+      },
+      { rootMargin: "-45% 0px -50% 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  return active;
+}
+
+const linkBase =
+  "relative inline-flex items-center rounded-full px-3.5 py-2 type-nav text-foreground/65 outline-none transition-colors duration-300 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-[current=true]:text-foreground after:absolute after:bottom-1 after:left-1/2 after:size-1 after:-translate-x-1/2 after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity aria-[current=true]:after:opacity-100";
+
+function NavLink({ item, className, onNavigate, delay, active }: { item: NavItem; className?: string; onNavigate?: () => void; delay?: number; active?: boolean }) {
+  if (item.href.startsWith("#")) {
+    return (
+      <AnchorLink
+        href={item.href as `#${string}`}
+        className={className}
+        onNavigate={onNavigate}
+        delay={delay}
+        aria-current={active ? "true" : undefined}
+      >
+        {item.name}
+      </AnchorLink>
+    );
+  }
+  return (
+    <Link href={item.href} className={className} onClick={onNavigate}>
+      {item.name}
+    </Link>
+  );
+}
+
+function SignInLink({ className, onClick }: { className: string; onClick?: () => void }) {
+  const link = (
+    <Link href="/sign-in" className={className} onClick={onClick}>
+      Sign in
+    </Link>
+  );
+  return HAS_CLERK ? <Show when="signed-out">{link}</Show> : link;
+}
 
 export function ExamOptNav() {
   const scrolled = useScroll(16);
-  const { lenis } = useSmoothScroll();
+  const active = useActiveSection();
   const [open, setOpen] = useState(false);
-  const [isRevealed, setIsRevealed] = useState(false);
-
-  useEffect(() => {
-    const handleReveal = () => setIsRevealed(true);
-    window.addEventListener("hero-animation-start", handleReveal);
-
-    // Safety fallback: reveal after 3.8s in case video is cached or autoplay blocked
-    const timer = setTimeout(() => setIsRevealed(true), 3800);
-    return () => {
-      window.removeEventListener("hero-animation-start", handleReveal);
-      clearTimeout(timer);
-    };
-  }, []);
-
-  const handleAnchor = (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    const wasOpen = open;
-    setOpen(false);
-    if (!href.startsWith("#")) return;
-    event.preventDefault();
-    window.setTimeout(() => {
-      if (lenis) lenis.scrollTo(href, { offset: -80 });
-      else document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
-      history.replaceState(null, "", href);
-    }, wasOpen ? 260 : 0);
-  };
+  const close = () => setOpen(false);
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 flex justify-center px-4 sm:px-8 pointer-events-none">
-      <nav
-        aria-label="Main"
+    <header
+      data-nav-shell
+      data-enter
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-500",
+        scrolled
+          ? "border-hairline/80 bg-canvas/75 shadow-[0_8px_30px_-24px_rgb(23_32_51/0.35)] backdrop-blur-xl backdrop-saturate-150"
+          : "border-transparent bg-transparent"
+      )}
+    >
+      <Container
         className={cn(
-          "pointer-events-auto w-full max-w-[1240px] h-16 sm:h-18 flex items-center justify-between transition-all duration-500 transform-gpu",
-          isRevealed ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+          "flex items-center justify-between gap-6 transition-[height] duration-500",
+          scrolled ? "h-16" : "h-[4.75rem]"
         )}
       >
-        {/* Left: Brand Logo & Wordmark */}
-        <Link href="/" className="flex items-center gap-2.5 outline-none group shrink-0">
-          <div className="size-8 sm:size-9 rounded-xl bg-[#1a62ff] flex items-center justify-center text-white shadow-sm shadow-blue-500/30 group-hover:bg-blue-600 group-hover:scale-105 transition-all">
-            {/* 9-dot grid icon */}
-            <svg className="size-4.5" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="5" r="2.2" />
-              <circle cx="12" cy="5" r="2.2" />
-              <circle cx="19" cy="5" r="2.2" />
-              <circle cx="5" cy="12" r="2.2" />
-              <circle cx="12" cy="12" r="2.2" />
-              <circle cx="19" cy="12" r="2.2" />
-              <circle cx="5" cy="19" r="2.2" />
-              <circle cx="12" cy="19" r="2.2" />
-              <circle cx="19" cy="19" r="2.2" />
-            </svg>
-          </div>
-          <span className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white">
-            ExamOpt <span className="font-semibold text-slate-700 dark:text-zinc-300">Studio</span>
-          </span>
+        <Link
+          href="/"
+          aria-label="ExamOpt Studio home"
+          className="shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <BrandLockup />
         </Link>
 
-        {/* Center: Desktop Navigation Links */}
-        <ul className="hidden lg:flex items-center gap-1.5">
-          {navItems.map((item) => (
-            <li key={item.name}>
-              <Link
-                href={item.href}
-                onClick={(e) => handleAnchor(e, item.href)}
-                className="flex items-center gap-1 px-3 py-1.5 text-[13px] font-semibold text-slate-800 hover:text-[#1a62ff] transition-colors"
-              >
-                {item.name}
-                {item.hasDropdown && <ChevronDown className="size-3 text-slate-500" />}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <nav aria-label="Main" className="hidden lg:block">
+          <ul className="flex items-center gap-0.5">
+            {navItems.map((item) => (
+              <li key={item.name}>
+                <NavLink item={item} className={linkBase} active={active === item.href} />
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        {/* Right: Actions (Search, Sign In, Open Workspace CTA, Avatar) */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Search Button */}
-          <button
-            type="button"
-            aria-label="Search"
-            className="hidden sm:flex size-8 text-slate-700 items-center justify-center transition-colors hover:text-[#1a62ff]"
-          >
-            <Search className="size-4" />
-          </button>
+        <div className="flex items-center gap-2">
+          <SignInLink className="hidden rounded-full px-3.5 py-2 type-nav text-foreground/75 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 sm:inline-flex" />
+          <Link href="/admin" className={cn(ctaStyles.primary, ctaStyles.sm, "hidden sm:inline-flex")}>
+            Open workspace
+            <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
+          </Link>
+          {HAS_CLERK && (
+            <Show when="signed-in">
+              <UserButton appearance={{ elements: { avatarBox: "size-9 ring-2 ring-white shadow-sm" } }} />
+            </Show>
+          )}
 
-          {/* Authentication Actions */}
-          <div className="hidden sm:flex items-center gap-2">
-            {HAS_CLERK ? (
-              <>
-                <Show when="signed-out">
-                  <Link
-                    href="/sign-in"
-                    className="text-xs sm:text-[13px] font-semibold text-slate-800 dark:text-zinc-200 hover:text-slate-950 px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors"
-                  >
-                    Sign In
-                  </Link>
-                </Show>
-              </>
-            ) : (
-              <Link
-                href="/sign-in"
-                className="text-xs sm:text-[13px] font-semibold text-slate-800 dark:text-zinc-200 hover:text-slate-950 px-3 py-1.5 rounded-full hover:bg-white/40 transition-colors"
-              >
-                Sign In
-              </Link>
-            )}
-
-            {/* Open Workspace Button */}
-            <Link
-              href="/admin"
-              className="h-9 sm:h-9.5 px-4 sm:px-5 rounded-full bg-[#1a62ff] hover:bg-[#0f52e4] text-white text-xs sm:text-[13px] font-semibold flex items-center gap-1.5 shadow-[0_4px_16px_rgba(26,98,255,0.35)] transition-all hover:shadow-[0_6px_22px_rgba(26,98,255,0.45)] hover:scale-[1.02] active:scale-[0.98]"
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger
+              className="grid size-10 place-items-center rounded-full border border-hairline bg-white/70 text-foreground outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
+              aria-label="Open navigation menu"
             >
-              Open Workspace
-              <ArrowRight className="size-3.5" />
-            </Link>
-
-            {/* Profile Avatar */}
-            {HAS_CLERK ? (
-              <Show when="signed-in">
-                <UserButton appearance={{ elements: { avatarBox: "size-8 sm:size-9 ring-2 ring-white/90 shadow-sm" } }} />
-              </Show>
-            ) : (
-              <div className="size-8 sm:size-9 rounded-full bg-white/60 dark:bg-zinc-700 flex items-center justify-center text-slate-700 dark:text-zinc-300 ring-2 ring-white/90 dark:ring-zinc-800 border border-white/60 shadow-sm">
-                <UserIcon className="size-4" />
-              </div>
-            )}
-          </div>
-
-          {/* Mobile Sheet Trigger */}
-          <div className="lg:hidden">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger
-                className="size-9 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-200"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="size-4.5" />
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] p-0 flex flex-col justify-between">
-                <SheetHeader className="border-b border-border/40 p-5">
-                  <SheetTitle className="text-left flex items-center gap-2">
-                    <div className="size-7 rounded-lg bg-[#1a62ff] flex items-center justify-center text-white">
-                      <svg className="size-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <circle cx="5" cy="5" r="2.2" />
-                        <circle cx="12" cy="5" r="2.2" />
-                        <circle cx="19" cy="5" r="2.2" />
-                        <circle cx="5" cy="12" r="2.2" />
-                        <circle cx="12" cy="12" r="2.2" />
-                        <circle cx="19" cy="12" r="2.2" />
-                        <circle cx="5" cy="19" r="2.2" />
-                        <circle cx="12" cy="19" r="2.2" />
-                        <circle cx="19" cy="19" r="2.2" />
-                      </svg>
-                    </div>
-                    ExamOpt Studio
-                  </SheetTitle>
-                </SheetHeader>
-                <ul className="flex flex-col p-4 gap-1">
+              <Menu className="size-[18px]" />
+            </SheetTrigger>
+            <SheetContent side="right" className="flex w-[300px] flex-col gap-0 bg-canvas p-0">
+              <SheetHeader className="border-b border-hairline p-5">
+                <SheetTitle className="text-left">
+                  <BrandLockup />
+                </SheetTitle>
+              </SheetHeader>
+              <nav aria-label="Mobile" className="flex-1 p-3">
+                <ul className="flex flex-col gap-0.5">
                   {navItems.map((item) => (
                     <li key={item.name}>
-                      <Link
-                        href={item.href}
-                        onClick={(e) => handleAnchor(e, item.href)}
-                        className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
-                      >
-                        {item.name}
-                      </Link>
+                      <NavLink
+                        item={item}
+                        onNavigate={close}
+                        delay={280}
+                        active={active === item.href}
+                        className="flex rounded-xl px-3 py-3 text-[15px] text-foreground/80 outline-none transition-colors hover:bg-foreground/[0.04] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-[current=true]:bg-primary-soft aria-[current=true]:text-primary"
+                      />
                     </li>
                   ))}
                 </ul>
-                <div className="p-5 border-t border-border/40 flex flex-col gap-2.5">
-                  <Link
-                    href="/sign-in"
-                    onClick={() => setOpen(false)}
-                    className="w-full text-center py-2 text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-slate-900"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/admin"
-                    onClick={() => setOpen(false)}
-                    className="w-full py-2.5 rounded-full bg-[#1a62ff] text-white text-center text-sm font-medium shadow-md flex items-center justify-center gap-1.5"
-                  >
-                    Open Workspace <ArrowRight className="size-3.5" />
-                  </Link>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+              </nav>
+              <div className="flex flex-col gap-2.5 border-t border-hairline p-5">
+                <SignInLink
+                  onClick={close}
+                  className={cn(ctaStyles.secondary, ctaStyles.sm, "w-full")}
+                />
+                <Link href="/admin" onClick={close} className={cn(ctaStyles.primary, ctaStyles.sm, "w-full")}>
+                  Open workspace
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-      </nav>
+      </Container>
     </header>
   );
 }

@@ -14,7 +14,10 @@
   --font-heading: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
   --color-canvas: var(--canvas);
+  --color-canvas-deep: var(--canvas-deep);
   --color-surface: var(--surface);
+  --color-hairline: var(--hairline);
+  --color-primary-soft: var(--primary-soft);
   --color-success: var(--examopt-success);
   --color-warning: var(--examopt-warning);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -136,12 +139,105 @@
   }
 }
 
-/* Homepage hero entrance: hidden only until GSAP reveals it, and never hidden
-   when the visitor prefers reduced motion (the animation is skipped then). */
+/* Entrance gate. `motion-ok` is set on <html> by an inline script before first
+   paint (app/layout.tsx), so `[data-enter]` elements are hidden only when
+   JavaScript runs and motion is allowed. GSAP marks them `data-entered` in the
+   same frame it takes over; if it never does, the failsafe shows them anyway. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero-enter {
+  .motion-ok [data-enter]:not([data-entered]) {
     opacity: 0;
+    animation: enter-failsafe 0.6s ease 2.6s forwards;
   }
+}
+
+@keyframes enter-failsafe {
+  to {
+    opacity: 1;
+  }
+}
+
+/* SplitText line masks: give italic descenders and overhangs room so the
+   clip used by heading reveals never cuts glyphs. */
+.split-line-mask {
+  padding: 0 0.08em 0.14em;
+  margin: 0 -0.08em -0.14em;
+}
+
+/* ============================================================
+   ExamOpt Studio — Homepage type scale
+   Display = Instrument Serif (editorial headings only).
+   Everything else = Geist Sans.
+   ============================================================ */
+
+@utility type-hero {
+  font-family: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: clamp(3.25rem, 1.95rem + 4.2vw, 5.75rem);
+  line-height: 0.94;
+  letter-spacing: -0.028em;
+}
+
+@utility type-section {
+  font-family: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: clamp(2.5rem, 1.75rem + 2.6vw, 4.25rem);
+  line-height: 0.98;
+  letter-spacing: -0.024em;
+}
+
+@utility type-panel {
+  font-family: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
+  font-weight: 400;
+  font-synthesis: none;
+  font-size: clamp(2.125rem, 1.7rem + 1.4vw, 3rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+@utility type-lede {
+  font-size: clamp(1rem, 0.94rem + 0.28vw, 1.1875rem);
+  line-height: 1.62;
+  letter-spacing: -0.006em;
+}
+
+@utility type-body {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+@utility type-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@utility type-nav {
+  font-size: 0.875rem;
+  font-weight: 450;
+  letter-spacing: -0.006em;
+}
+
+/* Restrained glass: translucent white, light blur, hairline edge. */
+@utility glass {
+  background-color: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.75);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.65),
+    0 1px 2px rgb(23 32 51 / 0.05),
+    0 18px 40px -22px rgb(23 32 51 / 0.32);
+}
+
+@utility shadow-panel {
+  box-shadow:
+    0 1px 2px rgb(23 32 51 / 0.04),
+    0 2px 6px -2px rgb(23 32 51 / 0.04),
+    0 32px 70px -36px rgb(23 32 51 / 0.34);
 }
 
 @layer base {
@@ -173,7 +269,10 @@
 
   /* Page canvas — warm off-white for editorial surfaces; product surfaces stay white */
   --canvas: #f7f6f2;
+  --canvas-deep: #efede6;
   --surface: #ffffff;
+  --hairline: #e7e4db;
+  --primary-soft: #eef2fb;
 
   /* ExamOpt semantic tokens */
   --examopt-success: #12805c;                    /* verified success */

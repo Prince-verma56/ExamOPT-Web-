@@ -55,13 +55,15 @@ export function ConflictGraphPreview() {
           return (
             <line
               key={`${from}-${to}`}
+              data-graph-edge={s.dash ? "fade" : "draw"}
+              pathLength={s.dash ? undefined : 1}
               x1={nodes[from].x}
               y1={nodes[from].y}
               x2={nodes[to].x}
               y2={nodes[to].y}
               stroke={s.stroke}
               strokeWidth={s.width}
-              strokeDasharray={s.dash}
+              strokeDasharray={s.dash ?? "1"}
               strokeOpacity={kind === "shared" ? 0.9 : 0.45}
             />
           );
@@ -71,7 +73,7 @@ export function ConflictGraphPreview() {
           const w = n.label.length * 6.4 + 18;
           const flagged = "flagged" in n && n.flagged;
           return (
-            <g key={key}>
+            <g key={key} data-graph-node>
               <rect
                 x={n.x - w / 2}
                 y={n.y - 12}
@@ -96,6 +98,22 @@ export function ConflictGraphPreview() {
             </g>
           );
         })}
+        {/* Conflict marker on the shared-student edge */}
+        <g data-graph-marker aria-hidden>
+          <circle cx={(nodes.a.x + nodes.b.x) / 2} cy={nodes.a.y} r={8} fill="#c83c4b" />
+          <circle cx={(nodes.a.x + nodes.b.x) / 2} cy={nodes.a.y} r={12} fill="none" stroke="#c83c4b" strokeOpacity={0.25} />
+          <text
+            x={(nodes.a.x + nodes.b.x) / 2}
+            y={nodes.a.y + 3.6}
+            textAnchor="middle"
+            fontSize="10"
+            fontWeight={700}
+            fill="#ffffff"
+            style={{ fontFamily: "var(--font-geist-sans)" }}
+          >
+            !
+          </text>
+        </g>
       </svg>
 
       <ul className="mt-auto space-y-1.5 pt-3 text-[11.5px] text-muted-foreground">
