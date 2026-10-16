@@ -73,6 +73,33 @@ Content-Type: application/json
 Accept: application/json
 ```
 
+## Student timetable (shared web and mobile data)
+
+The student portal and mobile app must read timetable information from this API. Both clients use the same Supabase-backed student/enrollment records and the same active published schedule; do not create or sync a separate mobile timetable database.
+
+For the signed-in student's own timetable, call:
+
+```http
+GET /api/v1/student/me/timetable
+Authorization: Bearer <Clerk JWT>
+Accept: application/json
+```
+
+The roll number is resolved from the verified account link on the server. Do not send a roll number to this endpoint. The web portal uses the same endpoint. Administrators who need to inspect a particular student can use `GET /api/v1/timetable/student?rollNo=<roll number>`; normal student accounts are restricted to their linked roll number.
+
+The `data` object contains `student`, `publication`, `status`, `valid`, `exams`, `enrolledCount`, `scheduledCount`, `dailyAvailability`, `notInPublishedSchedule`, and `clashes`. Each `exams` entry includes the subject, date, start/end time (minutes after midnight), session, room, and practical/lab details. `dailyAvailability` lists each date in the published timetable's slot calendar:
+
+```json
+{
+  "date": "2026-10-19",
+  "examIds": ["BCA-102"],
+  "examCount": 1,
+  "status": "EXAMS_SCHEDULED"
+}
+```
+
+`status` is `NO_EXAMS_SCHEDULED` when the student has no assigned exam that day. This only describes exams in the published timetable; it does not claim that the student has no other commitments. Unplaced enrolled subjects are listed separately in `notInPublishedSchedule`. Responses are marked `Cache-Control: private, no-store`; refresh from the API rather than displaying cached schedule data so web and mobile show the latest publication.
+
 ## Multipart Form Data (File Uploads)
 
 When uploading files (e.g., to `/api/v1/files`), omit the `Content-Type` header (let your HTTP client generate the boundary) or explicitly use `multipart/form-data`.

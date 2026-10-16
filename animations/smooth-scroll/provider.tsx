@@ -10,6 +10,7 @@
  */
 
 import { useEffect, createContext, useContext, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import Lenis from '@studio-freight/lenis';
 import { gsap, ScrollTrigger, registerGsapPlugins, prefersReducedMotion } from '../core';
 
@@ -35,12 +36,17 @@ export function SmoothScrollProvider({
   enabled = true,
 }: SmoothScrollProviderProps) {
   const [lenis, setLenis] = useState<Lenis | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     registerGsapPlugins();
 
-    // Native scrolling is the accessible choice when reduced motion is requested.
-    if (!enabled || prefersReducedMotion()) return;
+    // Disable smooth scrolling on workspace and student routes for native, instant responsiveness and table scrolling
+    const isAppRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/student');
+    if (!enabled || isAppRoute || prefersReducedMotion()) {
+      setLenis(null);
+      return;
+    }
 
     const lenisInstance = new Lenis({
       lerp: 0.1,
@@ -67,7 +73,7 @@ export function SmoothScrollProvider({
       lenisInstance.destroy();
       setLenis(null);
     };
-  }, [enabled]);
+  }, [enabled, pathname]);
 
   return (
     <SmoothScrollContext value={{ lenis }}>

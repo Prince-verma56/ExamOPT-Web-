@@ -16,7 +16,7 @@ describe("ExamOpt presentation configuration", () => {
       expect(slide.keyPoints.length).toBeGreaterThan(0);
 
       if (slide.image) {
-        expect(slide.image.src).toMatch(/^\/Images\/PPT Images\/.+\.png$/);
+        expect(slide.image.src).toMatch(/^\/Images\/PPT Images\/.+\.(png|jpeg|jpg)$/);
         expect(slide.image.alt.trim()).not.toBe("");
         expect(slide.image.caption.trim()).not.toBe("");
       }

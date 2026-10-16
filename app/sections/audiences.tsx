@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Two connected experiences — the administrator workspace and the student
  * timetable. Each panel crops its preview at the edge so the device imagery
@@ -5,7 +7,9 @@
  * section scrolls into view.
  */
 
-import { Check, Clock, DoorOpen, Search } from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
+import { Check, Clock, DoorOpen, Search, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EXAMOPT_ROOMS } from "@/lib/examopt-data";
 import { ArrowLink, DisplayHeading, Em, Eyebrow, PreviewTag, Container } from "@/components/marketing/primitives";
@@ -94,64 +98,83 @@ function AdminWorkspacePreview() {
   );
 }
 
-const studentExams = [
-  { code: "BCA-302", name: "Database Management Systems", date: "Wed 21 Oct", time: "09:30 – 12:30", room: "AB11-102", next: true },
-  { code: "BCA-303", name: "Object Oriented Programming", date: "Thu 22 Oct", time: "09:30 – 12:30", room: "AB11-101" },
-  { code: "BCA-304P", name: "Data Structures & Java Lab", date: "Fri 23 Oct", time: "09:30 – 12:30", room: "LAB-2" },
-];
+type StudentTab = "timetable" | "calendar" | "conflict";
 
-/** Single, quiet phone frame cropped by the panel's bottom edge. */
+const STUDENT_MOBILE_ASSETS: Record<
+  StudentTab,
+  { label: string; src: string; alt: string; tag: string }
+> = {
+  timetable: {
+    label: "Timetable",
+    src: "/Images/PPT Images/WhatsApp Image 2026-10-16 at 9.12.07 PM (2).jpeg",
+    alt: "Personal student timetable on mobile showing exam venues and timings",
+    tag: "Chronological Feed",
+  },
+  calendar: {
+    label: "Calendar",
+    src: "/Images/PPT Images/WhatsApp Image 2026-10-16 at 9.12.07 PM (1).jpeg",
+    alt: "Mobile monthly examination calendar with active date highlighting",
+    tag: "October 2026",
+  },
+  conflict: {
+    label: "Clash Alert",
+    src: "/Images/PPT Images/WhatsApp Image 2026-10-16 at 9.12.08 PM (1).jpeg",
+    alt: "Mobile conflict detection notice flagging clashing courses",
+    tag: "Proactive Warning",
+  },
+};
+
+/** Responsive smartphone mockup displaying real mobile application screenshots */
 function StudentPhonePreview() {
+  const [activeTab, setActiveTab] = useState<StudentTab>("timetable");
+  const activeAsset = STUDENT_MOBILE_ASSETS[activeTab];
+
   return (
     <div
       role="img"
-      aria-label="Student timetable preview on a phone using sample data"
-      className="mx-auto w-[272px] rounded-t-[42px] border-[7px] border-b-0 border-[#1b2335] bg-[#1b2335] shadow-[0_-30px_70px_-30px_rgb(23_32_51/0.5)]"
+      aria-label="Student mobile timetable preview on smartphone"
+      className="mx-auto flex flex-col items-center"
     >
-      <div className="overflow-hidden rounded-t-[33px] bg-[#f7f6f2]">
-        <div className="flex items-center justify-between px-6 pt-3 text-[10px] font-medium text-foreground">
-          <span>9:41</span>
-          <span className="h-[18px] w-[70px] rounded-full bg-[#1b2335]" />
-          <span className="tabular-nums">100%</span>
-        </div>
-        <div className="px-4 pb-0 pt-4">
-          <div className="flex items-center justify-between">
-            <p className="font-display text-[22px] leading-none text-foreground">My exams</p>
-            <PreviewTag className="px-1.5">Sample</PreviewTag>
-          </div>
-          <p className="mt-1 text-[10.5px] text-muted-foreground">GLA26-BCA-0001 · BCA, Semester 3</p>
+      {/* Switcher pills */}
+      <div className="mb-3 flex items-center gap-1 rounded-full border border-border/80 bg-white/95 p-1 shadow-sm backdrop-blur-sm">
+        {(["timetable", "calendar", "conflict"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold transition-all",
+              activeTab === tab
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {STUDENT_MOBILE_ASSETS[tab].label}
+          </button>
+        ))}
+      </div>
 
-          <ul className="mt-4 space-y-2">
-            {studentExams.map((exam) => (
-              <li
-                key={exam.code}
-                className={cn(
-                  "rounded-xl border p-3",
-                  exam.next ? "border-primary/25 bg-white shadow-[0_8px_20px_-14px_rgba(40,85,199,0.6)]" : "border-[#e6e2d8] bg-white/70"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11.5px] font-semibold text-foreground">{exam.code}</span>
-                  {exam.next ? (
-                    <span className="rounded-full bg-primary px-1.5 py-px text-[9px] font-medium text-primary-foreground">Next</span>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground">{exam.date}</span>
-                  )}
-                </div>
-                <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">{exam.name}</p>
-                {exam.next && (
-                  <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-[10px] text-foreground/80">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="size-3 text-primary" /> {exam.date}, {exam.time.split(" ")[0]}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <DoorOpen className="size-3 text-primary" /> Room {exam.room}
-                    </span>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+      {/* Phone device bezel rising from bottom */}
+      <div className="relative w-[260px] sm:w-[275px] rounded-t-[42px] border-[6px] border-b-0 border-[#131927] bg-[#0c101a] p-1 shadow-[0_-30px_70px_-30px_rgb(23_32_51/0.65)] ring-1 ring-white/10">
+        {/* Dynamic Island */}
+        <div className="absolute left-1/2 top-2.5 z-20 -translate-x-1/2">
+          <div className="flex h-3 w-14 items-center justify-center gap-1.5 rounded-full bg-[#131927] px-2 shadow-inner">
+            <span className="size-1 rounded-full bg-[#273248]" />
+            <span className="h-0.5 w-5 rounded-full bg-[#273248]" />
+          </div>
+        </div>
+
+        {/* Viewport with real screenshot */}
+        <div className="relative aspect-[9/19] w-full overflow-hidden rounded-t-[34px] bg-[#0c101a]">
+          <Image
+            src={activeAsset.src}
+            alt={activeAsset.alt}
+            fill
+            sizes="275px"
+            className="object-cover object-top transition-transform duration-300"
+            priority
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-black/45 to-transparent" />
         </div>
       </div>
     </div>
@@ -217,14 +240,14 @@ export function AudiencesSection() {
               </DisplayHeading>
               <Checklist
                 items={[
-                  "See published examination dates and times",
-                  "Find the right room",
-                  "Get schedule-change information when available",
+                  "Personal examination timetable with time slots and rooms",
+                  "Interactive monthly calendar highlighting scheduled exams",
+                  "Instant conflict detection notices before exam day",
+                  "Read-only student access linked to official enrollments",
                 ]}
               />
               <p className="mt-6 max-w-[36ch] text-[13.5px] leading-relaxed text-muted-foreground">
-                The student web portal is available today. A Flutter companion app is planned for a
-                later phase, built on the same API.
+                Accessible on web and companion mobile interfaces — powered by the same deterministic scheduling engine.
               </p>
               <ArrowLink href="/student" className="mt-6">
                 Open the student portal

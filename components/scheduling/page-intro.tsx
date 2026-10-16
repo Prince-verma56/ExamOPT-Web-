@@ -14,7 +14,7 @@ export function PageIntro({ eyebrow, title, description, actions, className }: {
         <p className="flex items-center gap-2 text-[11px] font-medium tracking-[0.16em] text-muted-foreground uppercase">
           <span className="h-px w-6 bg-border" aria-hidden />{eyebrow}
         </p>
-        <h1 className="mt-2 font-display text-4xl leading-none text-foreground md:text-[2.75rem]">{title}</h1>
+        <h1 className="mt-2 font-heading text-4xl leading-none font-semibold tracking-tight text-foreground md:text-[2.75rem]">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

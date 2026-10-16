@@ -167,7 +167,7 @@ export function AdminSidebar() {
         <div className="flex items-center gap-2.5">
           <SafeUserButton />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-foreground truncate">Admin</p>
+            <p className="text-xs font-medium text-foreground truncate">Signed-in account</p>
             <p className="text-[10px] text-muted-foreground">ExamOpt Studio</p>
           </div>
         </div>

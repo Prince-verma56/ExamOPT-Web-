@@ -88,21 +88,21 @@ function PresentationSlideCard({
     >
       <div
         className={cn(
-          "relative mx-auto w-full overflow-hidden rounded-[26px] border border-[#e1e6ef] bg-[#fdfefe] px-5 py-7 shadow-[0_24px_70px_-50px_rgba(23,32,51,0.45)] sm:px-8 sm:py-9 lg:aspect-[16/9] lg:px-12 lg:py-11",
+          "relative mx-auto w-full overflow-hidden rounded-[26px] border border-[#e1e6ef] bg-[#fdfefe] px-5 py-6 shadow-[0_24px_70px_-50px_rgba(23,32,51,0.45)] sm:px-8 sm:py-8 lg:min-h-[min(590px,calc(100svh-8.5rem))] lg:px-10 lg:py-8 xl:px-12 xl:py-10",
           slide.visual === "architecture" || slide.visual === "verification"
             ? "bg-[#f9fbff]"
             : "bg-[#fdfefe]",
         )}
-        style={{ width: "min(100%, calc((100svh - 9rem) * 16 / 9))" }}
+        style={{ width: "min(100%, calc((100svh - 8.5rem) * 16 / 9))" }}
       >
         <div aria-hidden className="absolute -right-20 -top-24 size-72 rounded-full bg-[#eaf0ff]/70 blur-3xl" />
         <div aria-hidden className="absolute -bottom-24 -left-24 size-64 rounded-full bg-[#f5f7fb]" />
-        <div className="relative flex items-center justify-between gap-4 border-b border-[#e8ebf0] pb-3 text-[9px] font-bold uppercase tracking-[0.14em] text-[#667085]">
-          <span>ExamOpt Studio</span>
+        <div className="relative flex items-center justify-between gap-4 border-b border-[#e8ebf0] pb-2.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[#667085]">
+          <span>ExamOpt Studio · GLA HackVision 2.0</span>
           <span>{String(index + 1).padStart(2, "0")} / {String(TOTAL_SLIDES).padStart(2, "0")}</span>
         </div>
 
-        <div className="relative grid gap-8 pt-7 lg:grid-cols-[minmax(0,0.83fr)_minmax(0,1.17fr)] lg:items-center lg:pt-9">
+        <div className="relative grid gap-6 pt-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-center lg:pt-6">
           <SlideCopy slide={slide} />
           <div className="relative" data-ppt-enter>
             <PresentationVisual slide={slide} />
@@ -110,7 +110,7 @@ function PresentationSlideCard({
         </div>
 
         {slide.note && (
-          <p className="relative mt-5 border-t border-[#e8ebf0] pt-3 text-[10px] leading-relaxed text-[#667085] lg:absolute lg:bottom-7 lg:left-12 lg:right-12">
+          <p className="relative mt-4 border-t border-[#e8ebf0] pt-2 text-[9.5px] leading-relaxed text-[#667085]">
             {slide.note}
           </p>
         )}

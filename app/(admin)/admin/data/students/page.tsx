@@ -10,6 +10,7 @@ import { api, errorMessage } from "@/components/scheduling/api";
 import { num } from "@/components/scheduling/format";
 import { PageIntro, StatStrip } from "@/components/scheduling/page-intro";
 import { Segmented } from "@/components/scheduling/segmented";
+import { StudentLinkModal } from "@/components/examopt/student-link-modal";
 
 type Student = { rollNo: string; name: string; groupId: string; groupName: string | null; program: string | null; semester: number | null; hasBacklog: boolean; subjectIds: string[]; backlogSubjectIds: string[] };
 type Response = { students: Student[]; pagination: { page: number; pages: number; total: number }; metrics: { totalStudents: number; backlogStudents: number; backlogEnrollments: number; subjectEnrollments: number }; programs: string[] };
@@ -40,7 +41,12 @@ export default function StudentsPage() {
   const m = data?.metrics;
   return (
     <div className="space-y-8 pb-8">
-      <PageIntro eyebrow="Data workspace" title="Students" description="Every student and the examinations they sit, read from the enrollment records the scheduler uses to build the conflict graph. A backlog exam is one outside the student's own program or below their semester; it creates cross-semester conflicts." />
+      <PageIntro
+        eyebrow="Data workspace"
+        title="Students"
+        description="Every student and the examinations they sit, read from the enrollment records the scheduler uses to build the conflict graph. A backlog exam is one outside the student's own program or below their semester; it creates cross-semester conflicts."
+        actions={<StudentLinkModal onLinked={() => void load()} />}
+      />
 
       {error && <p className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/4 p-4 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="size-4" />{error}</span><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw />Retry</Button></p>}
 

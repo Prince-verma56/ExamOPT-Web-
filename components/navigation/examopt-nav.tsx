@@ -11,7 +11,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show, UserButton, useUser } from "@clerk/nextjs";
 import { ArrowRight, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HAS_CLERK } from "@/components/auth/safe-auth-button";
@@ -94,6 +94,12 @@ export function ExamOptNav() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const close = () => setOpen(false);
 
+  const { user, isSignedIn } = useUser();
+  const isAdmin = Boolean(
+    user?.emailAddresses.some((e) => e.emailAddress.toLowerCase() === "pvcodingz96@gmail.com") ||
+    user?.publicMetadata?.role === "admin"
+  );
+
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -151,10 +157,17 @@ export function ExamOptNav() {
 
         <div className="flex items-center gap-2">
           <SignInLink className="hidden rounded-full px-3.5 py-2 type-nav text-foreground/75 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 sm:inline-flex" />
-          <Link href="/admin" className={cn(ctaStyles.primary, ctaStyles.sm, "hidden sm:inline-flex")}>
-            Open workspace
-            <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
-          </Link>
+          {isSignedIn && !isAdmin ? (
+            <Link href="/student" className={cn(ctaStyles.primary, ctaStyles.sm, "hidden sm:inline-flex")}>
+              Student portal
+              <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          ) : (
+            <Link href="/admin" className={cn(ctaStyles.primary, ctaStyles.sm, "hidden sm:inline-flex")}>
+              {isAdmin ? "Admin workspace" : "Open workspace"}
+              <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
+            </Link>
+          )}
           {HAS_CLERK && (
             <Show when="signed-in">
               <UserButton appearance={{ elements: { avatarBox: "size-9 ring-2 ring-white shadow-sm" } }} />
@@ -194,10 +207,17 @@ export function ExamOptNav() {
                   onClick={close}
                   className={cn(ctaStyles.secondary, ctaStyles.sm, "w-full")}
                 />
-                <Link href="/admin" onClick={close} className={cn(ctaStyles.primary, ctaStyles.sm, "w-full")}>
-                  Open workspace
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </Link>
+                {isSignedIn && !isAdmin ? (
+                  <Link href="/student" onClick={close} className={cn(ctaStyles.primary, ctaStyles.sm, "w-full")}>
+                    Student portal
+                    <ArrowRight className="size-3.5" aria-hidden />
+                  </Link>
+                ) : (
+                  <Link href="/admin" onClick={close} className={cn(ctaStyles.primary, ctaStyles.sm, "w-full")}>
+                    {isAdmin ? "Admin workspace" : "Open workspace"}
+                    <ArrowRight className="size-3.5" aria-hidden />
+                  </Link>
+                )}
               </div>
             </SheetContent>
           </Sheet>

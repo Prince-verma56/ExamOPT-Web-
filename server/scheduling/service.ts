@@ -13,6 +13,7 @@ import { normalizeDataset } from "./normalize";
 import { runStore, type Publication, type RunSummary, type StoredAssignment } from "./persistence";
 import { publishGate } from "./publication";
 import { parseCsv } from "./reference-dataset";
+import { buildStudentDayAvailability } from "./student-calendar";
 import { runTestLab, TEST_CASES } from "./test-lab";
 import { validateSchedule } from "./validator";
 
@@ -283,12 +284,14 @@ export const schedulingService = {
     const enrolled = new Set(student.subjectIds);
     const exams = published.assignments.filter((a) => enrolled.has(a.examId));
     const scheduled = new Set(exams.map((a) => a.examId));
+    const dailyAvailability = buildStudentDayAvailability(published.slots, exams);
     // Defensive re-check of this student's own clashes (the validator already covers everyone).
     const clashes = exams.flatMap((a, i) => exams.slice(i + 1).filter((b) => a.slotId === b.slotId || (a.date === b.date && (a.startMinutes ?? 0) < (b.endMinutes ?? 0) && (b.startMinutes ?? 0) < (a.endMinutes ?? 0))).map((b) => [a.examId, b.examId]));
     return {
       student, publication: published.publication, status: published.status, valid: published.valid,
       exams: exams.map(({ storedStudents, ...rest }) => rest),
       enrolledCount: enrolled.size, scheduledCount: exams.length,
+      dailyAvailability,
       notInPublishedSchedule: [...enrolled].filter((id) => !scheduled.has(id)).sort(),
       clashes,
     };

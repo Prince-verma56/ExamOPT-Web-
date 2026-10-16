@@ -11,9 +11,11 @@ const querySchema = z.object({ rollNo: z.string().trim().max(40).optional() }).s
  * their account; administrators may name any roll number.
  */
 export async function GET(req: Request) {
-  return createApiRoute({ req, requireAuth: true, schema: querySchema }, (ctx, input) => {
+  const response = await createApiRoute({ req, requireAuth: true, schema: querySchema }, (ctx, input) => {
     const decision = decideTimetableAccess("student", { role: ctx.role as Access["role"], identity: ctx.identity }, input.rollNo);
     if (!decision.allowed) throw new ApiRouteError(decision.code, decision.message, decision.status);
     return schedulingService.studentTimetable(decision.id);
   });
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  return response;
 }

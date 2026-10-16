@@ -5,6 +5,7 @@ import { IdempotencyService } from '../integrations/idempotency';
 import { auditService } from '../audit';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { decideAccess, DEMO_PRINCIPAL_ID, identityFromMetadata, isDemoAllowed, parseList, type LinkedIdentity } from '@/modules/auth/access';
+import { resolveStudentRollNo } from '@/modules/auth/student-links';
 
 export interface ApiContext {
   userId: string | null;
@@ -14,6 +15,8 @@ export interface ApiContext {
   /** Student/faculty linkage from Clerk publicMetadata, read server-side. Empty for anonymous and demo sessions. */
   identity: LinkedIdentity;
   email: string | null;
+  /** Whether Clerk's backend profile was available for this request. */
+  profileAvailable: boolean;
 }
 
 export interface ApiHandlerOptions<TReq = unknown> {
@@ -47,7 +50,7 @@ export function isClerkConfigured() {
   return Boolean(key && (key.startsWith('pk_test_') || key.startsWith('pk_live_')));
 }
 
-type ClerkProfile = { email: string | null; role: unknown; identity: LinkedIdentity; expires: number };
+type ClerkProfile = { email: string | null; role: unknown; identity: LinkedIdentity; available: boolean; expires: number };
 const profileCache = new Map<string, ClerkProfile>();
 const NO_IDENTITY: LinkedIdentity = { rollNo: null, facultyId: null };
 
@@ -58,11 +61,11 @@ async function clerkProfile(userId: string): Promise<ClerkProfile> {
     const user = await (await clerkClient()).users.getUser(userId);
     const email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
-    const profile = { email, role: metadata.role, identity: identityFromMetadata(metadata), expires: Date.now() + 60_000 };
+    const profile = { email, role: metadata.role, identity: identityFromMetadata(metadata), available: true, expires: Date.now() + 60_000 };
     profileCache.set(userId, profile);
     return profile;
   } catch {
-    return { email: null, role: undefined, identity: NO_IDENTITY, expires: 0 };
+    return { email: null, role: undefined, identity: NO_IDENTITY, available: false, expires: 0 };
   }
 }
 
@@ -74,7 +77,25 @@ async function resolveAccess(userId: string | null) {
   // The profile is needed to decide the role, and in any case for student/faculty linkage.
   const profile = signedIn && isClerkConfigured() ? await clerkProfile(userId!) : null;
   const access = decideAccess({ userId, demoAllowed, email: profile?.email, metadataRole: profile?.role, allowedUserIds, allowedEmails });
-  return { ...access, identity: profile?.identity ?? NO_IDENTITY, email: profile?.email ?? null };
+
+  // Resolve linked student roll number (metadata -> persistent registry -> env mapping -> dev fallback)
+  const linkedRollNo = await resolveStudentRollNo({
+    userId,
+    email: profile?.email,
+    metadataRollNo: profile?.identity?.rollNo,
+  });
+
+  const identity: LinkedIdentity = {
+    rollNo: linkedRollNo,
+    facultyId: profile?.identity?.facultyId ?? null,
+  };
+
+  return {
+    ...access,
+    identity,
+    email: profile?.email ?? null,
+    profileAvailable: profile?.available ?? false,
+  };
 }
 
 /**
@@ -114,7 +135,7 @@ export async function createApiRoute<TReq, TRes>(
 
     const resolved = await resolveAccess(userId);
     ({ role, permissions } = resolved);
-    const { identity, email } = resolved;
+    const { identity, email, profileAvailable } = resolved;
 
     if (options.requireAuth && !userId) {
       return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
@@ -171,6 +192,7 @@ export async function createApiRoute<TReq, TRes>(
       requestId,
       identity,
       email,
+      profileAvailable,
     };
 
     // 3. Execution (with Idempotency)
