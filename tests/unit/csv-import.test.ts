@@ -194,7 +194,9 @@ describe("CSV conflict resolution", () => {
     const dataset = Object.fromEntries(plan.quality!.newErrors.map((e, i) => [e.code, fixes.dataset[i][0].label]));
     expect(dataset.CAPACITY_OVERFLOW).toBe("Cap the declared enrollment at 150 (largest theory room)");
     expect(dataset.LAB_CAPACITY_OVERFLOW).toBe("Cap the declared enrollment at 100 (largest laboratory)");
-    expect(dataset.LAB_BOTTLENECK).toMatch(/^Move DEMO-LAB-508 to D\d-[ME] \(slots with a free laboratory\)$/);
+    expect(dataset.LAB_BOTTLENECK).toBe(
+      "Move DEMO-LAB-508 to D1-M, DEMO-LAB-507 to D1-M, DEMO-LAB-506 to D1-M (slots with a free laboratory)",
+    );
   });
 
   test("applying the safe fixes leaves only what needs a human (the missing name); typing it makes the file importable", () => {

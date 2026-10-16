@@ -5,11 +5,11 @@ import 'dart:convert';
 /// no Supabase or Clerk secret is ever needed on the device.
 ///
 ///   flutter build apk --debug \
-///     --dart-define=API_BASE_URL=http://10.0.2.2:3000 \
 ///     --dart-define=CLERK_PUBLISHABLE_KEY=pk_test_...
 class AppConfig {
   AppConfig._();
 
+  static const String defaultApiBaseUrl = 'https://exam-opt-web.vercel.app';
   static const String _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
   static const String clerkPublishableKey = String.fromEnvironment(
     'CLERK_PUBLISHABLE_KEY',
@@ -18,15 +18,14 @@ class AppConfig {
   /// True in release builds (`flutter build apk --release`).
   static const bool isRelease = bool.fromEnvironment('dart.vm.product');
 
-  /// The ExamOpt Next.js server. Debug builds default to the Android
-  /// emulator's alias for the development machine (10.0.2.2) on port 3000;
-  /// release builds must be given an HTTPS URL explicitly.
+  /// The deployed ExamOpt server is the default; local development can override
+  /// it with `--dart-define=API_BASE_URL=http://10.0.2.2:3000`.
   static String get apiBaseUrl {
     final value = _apiBaseUrl.trim();
     if (value.isNotEmpty) {
       return value.endsWith('/') ? value.substring(0, value.length - 1) : value;
     }
-    return isRelease ? '' : 'http://10.0.2.2:3000';
+    return defaultApiBaseUrl;
   }
 
   /// Clerk Frontend API host encoded in the publishable key

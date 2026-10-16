@@ -327,6 +327,11 @@ Future<void> signIn(
 
 void main() {
   group('configuration', () {
+    test('uses the deployed ExamOpt server by default', () {
+      expect(AppConfig.defaultApiBaseUrl, 'https://exam-opt-web.vercel.app');
+      expect(AppConfig.apiBaseUrl, AppConfig.defaultApiBaseUrl);
+    });
+
     test('decodes the Clerk Frontend API host from a publishable key', () {
       final key =
           'pk_test_${base64.encode(utf8.encode('welcome-ewe-3348.clerk.accounts.dev\$')).replaceAll('=', '')}';

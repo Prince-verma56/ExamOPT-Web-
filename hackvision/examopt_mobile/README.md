@@ -28,22 +28,30 @@ A ditto-copy mobile application built with **Flutter 3.47 & Dart 3.13** faithful
 
 ## 🚀 Running the App
 
+The app connects to the deployed ExamOpt API at `https://exam-opt-web.vercel.app`
+by default. To point it at a local development server, override the API URL
+with `--dart-define=API_BASE_URL=http://10.0.2.2:3000` (Android emulator).
+Clerk sign-in also requires the public Clerk publishable key used by the web
+app; provide it at build/run time with
+`--dart-define=CLERK_PUBLISHABLE_KEY=pk_...`. Never use a Clerk secret key in
+the mobile app.
+
 ### 1. Run on Chrome (Web)
 ```powershell
 cd examopt_mobile
-flutter run -d chrome
+flutter run -d chrome --dart-define=CLERK_PUBLISHABLE_KEY=pk_...
 ```
 
 ### 2. Run on Local Web Server
 ```powershell
 cd examopt_mobile
-flutter run -d web-server --web-port=5175
+flutter run -d web-server --web-port=5175 --dart-define=CLERK_PUBLISHABLE_KEY=pk_...
 ```
 
 ### 3. Run on Connected Mobile / Android Device
 ```powershell
 cd examopt_mobile
-flutter run -d <device-id>
+flutter run -d <device-id> --dart-define=CLERK_PUBLISHABLE_KEY=pk_...
 ```
 
 ### 4. Run Automated Widget Tests (13/13 Passing)

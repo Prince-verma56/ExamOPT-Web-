@@ -9,7 +9,7 @@ The backend is built with Next.js App Router API routes, but **it is strictly cl
 Your mobile app should point to the Next.js origin.
 
 - **Local:** `http://10.0.2.2:3000/api/v1` (Android emulator) or `http://localhost:3000/api/v1` (iOS simulator)
-- **Production:** `https://your-app.com/api/v1`
+- **Production:** `https://exam-opt-web.vercel.app/api/v1`
 
 ## Authentication (Bearer Tokens)
 
