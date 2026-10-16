@@ -29,7 +29,7 @@ export function StatStrip({ items, className }: { items: { label: string; value:
       {items.map((item) => (
         <div key={item.label} className="border-r border-b px-4 py-3.5 last:border-r-0 lg:border-b-0">
           <dt className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{item.label}</dt>
-          <dd className={cn("mt-1 text-xl font-semibold tabular-nums tracking-tight", item.tone === "warning" && "text-[var(--examopt-warning)]", item.tone === "error" && "text-destructive")}>{item.value}</dd>
+          <dd className={cn("mt-1 text-xl font-semibold tabular-nums tracking-tight", item.tone === "warning" && "text-warning", item.tone === "error" && "text-destructive")}>{item.value}</dd>
           {item.hint && <dd className="mt-0.5 truncate text-xs text-muted-foreground">{item.hint}</dd>}
         </div>
       ))}

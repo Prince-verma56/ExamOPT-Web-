@@ -52,3 +52,6 @@ prisma/generated/
 # docker
 docker/data/
 
+# nested temporary projects
+hackvision/
+

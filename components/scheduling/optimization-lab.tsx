@@ -127,7 +127,7 @@ export function OptimizationLab() {
     return (
       <div className="space-y-8">
         <Intro />
-        <div className="flex flex-col items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-6">
+        <div className="flex flex-col items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/4 p-6">
           <p className="flex items-center gap-2 text-sm font-medium text-destructive"><CircleAlert className="size-4" />Could not load the scheduling dataset</p>
           <p className="text-sm text-muted-foreground">{loadError}</p>
           <Button variant="outline" size="sm" onClick={() => void loadReadiness()}><RefreshCw />Try again</Button>
@@ -157,15 +157,15 @@ export function OptimizationLab() {
           <h2 id="readiness-heading" className="text-sm font-semibold">Dataset readiness</h2>
           {readiness && <p className="text-xs text-muted-foreground">Loaded {dateTime(readiness.loadedAt)} from Supabase</p>}
         </div>
-        {!readiness ? <Skeleton className="h-[84px] rounded-xl" /> : (
+        {!readiness ? <Skeleton className="h-21 rounded-xl" /> : (
           <StatStrip items={[
             { label: "Examinations", value: readiness.counts.exams, hint: `${readiness.counts.labExams} practical (lab)` },
             { label: "Students", value: num(readiness.counts.students), hint: `${num(readiness.counts.enrollments)} enrollments` },
-            { label: "Backlog seats", value: readiness.counts.backlogEnrollments, hint: "cross-semester / bridge" },
+            { label: "Backlog seats", value: readiness.counts.backlogEnrollments, hint: "cross-semester" },
             { label: "Rooms", value: readiness.counts.rooms, hint: `${readiness.counts.labRooms} labs · ${num(readiness.counts.totalSeats)} seats` },
             { label: "Time slots", value: readiness.counts.slots, hint: `${readiness.counts.days} days` },
             { label: "Fixed slots", value: readiness.counts.fixedSlotExams, hint: `${readiness.counts.examUnavailabilities + readiness.counts.roomUnavailabilities} blackouts` },
-            { label: "Conflict graph", value: `${g!.edgeCount} edges`, hint: `density ${num(g!.density * 100, 0)}% · max degree ${g!.maxDegree}` },
+            { label: "Conflict graph", value: `${g!.edgeCount} edges`, hint: `${num(g!.density * 100, 0)}% dense · max ${g!.maxDegree}` },
           ]} />
         )}
         {readiness && status && (
@@ -185,7 +185,7 @@ export function OptimizationLab() {
                 </p>
                 <CollapsibleTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "group")}>
                   Preflight · {readiness.preflight.errors} errors · {readiness.preflight.warnings} warnings
-                  <ChevronDown className="transition-transform group-data-[panel-open]:rotate-180" />
+                  <ChevronDown className="transition-transform group-data-panel-open:rotate-180" />
                 </CollapsibleTrigger>
               </div>
             </div>
@@ -214,7 +214,7 @@ export function OptimizationLab() {
               const phase = phases[algorithm.id];
               const result = batch.find((r) => r.algorithm === algorithm.id);
               return (
-                <label key={algorithm.id} className={cn("group/algo flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/40", checked ? "border-primary/50 bg-primary/[0.025]" : "hover:border-foreground/20", running && "cursor-default")}>
+                <label key={algorithm.id} className={cn("group/algo flex cursor-pointer items-start gap-4 rounded-xl border bg-card p-4 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/40", checked ? "border-primary/50 bg-primary/2.5" : "hover:border-foreground/20", running && "cursor-default")}>
                   <Checkbox className="mt-0.5" checked={checked} disabled={running} onCheckedChange={(value) => setSelected((list) => value ? [...list, algorithm.id] : list.filter((id) => id !== algorithm.id))} />
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
@@ -224,7 +224,7 @@ export function OptimizationLab() {
                     <p className="text-sm leading-relaxed text-muted-foreground">{algorithm.summary}</p>
                     <p className="text-xs text-foreground/70">{algorithm.complete ? "Complete search: can prove infeasibility, bounded by the search budget." : "Heuristic: a failure to place an exam is not proof that no schedule exists."}</p>
                   </div>
-                  <div className="flex w-28 shrink-0 flex-col items-end gap-1 text-right">
+                  <div className="flex shrink-0 flex-col items-end gap-1 text-right empty:hidden sm:w-28">
                     {phase === "queued" && <span className="text-xs text-muted-foreground">Queued</span>}
                     {phase === "running" && <span className="inline-flex items-center gap-1.5 text-xs text-primary"><Loader2 className="size-3.5 animate-spin" />Running</span>}
                     {phase === "error" && <span className="text-xs text-destructive">Failed</span>}
@@ -233,7 +233,7 @@ export function OptimizationLab() {
                 </label>
               );
             })}
-            {!readiness && Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-[104px] rounded-xl" />)}
+            {!readiness && Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-26 rounded-xl" />)}
           </div>
         </div>
 
@@ -276,8 +276,8 @@ export function OptimizationLab() {
           </div>
 
           <TabsContent value="batch" className="mt-4 space-y-5">
-            {runError && <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/[0.04] p-3 text-sm text-destructive"><CircleAlert className="size-4 shrink-0" />{runError}</p>}
-            {inputsShifted && <p className="rounded-lg border border-[var(--examopt-warning)]/40 bg-[var(--examopt-warning)]/[0.06] p-3 text-sm">The dataset changed while this batch was running, so these runs did not all see identical input.</p>}
+            {runError && <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/4 p-3 text-sm text-destructive"><CircleAlert className="size-4 shrink-0" />{runError}</p>}
+            {inputsShifted && <p className="rounded-lg border border-warning/40 bg-warning/6 p-3 text-sm">The dataset changed while this batch was running, so these runs did not all see identical input.</p>}
             {!batch.length && !running && (
               <div className="rounded-xl border border-dashed bg-card/60 px-6 py-14 text-center">
                 <p className="font-display text-2xl">No runs in this batch yet</p>
@@ -295,7 +295,7 @@ export function OptimizationLab() {
                 ))}
               </div>
             )}
-            {batch.length > 1 && <ComparisonTable rows={batch} onOpen={setOpen} caption="Ranked by feasibility first (validator-passed schedules), then fewest unscheduled exams, then lowest soft penalty, then speed. Green marks the best value among feasible runs only." />}
+            {batch.length > 1 && <ComparisonTable rows={batch} onOpen={setOpen} caption="Ranked by feasibility first (validator-passed schedules), then fewest unscheduled exams, then lowest soft penalty (↓ lower is better), then speed. Violations count hard-constraint breaches in placed exams; same-day counts extra exams a student sits on one day. Green marks the best value among feasible runs only." />}
           </TabsContent>
 
           <TabsContent value="history" className="mt-4 space-y-5">
@@ -308,11 +308,11 @@ export function OptimizationLab() {
                   {picked.length > 0 && <Button variant="ghost" size="sm" onClick={() => setPicked([])}>Clear selection ({picked.length})</Button>}
                 </div>
                 <div className="overflow-hidden rounded-xl border bg-card">
-                  <ul className="max-h-[420px] divide-y overflow-y-auto">
+                  <ul className="max-h-105 divide-y overflow-y-auto">
                     {history.map((run) => {
                       const isPicked = picked.includes(run.runId);
                       return (
-                        <li key={run.runId} className={cn("flex items-center gap-4 px-4 py-2.5 text-sm", isPicked && "bg-primary/[0.03]")}>
+                        <li key={run.runId} className={cn("flex items-center gap-4 px-4 py-2.5 text-sm", isPicked && "bg-primary/3")}>
                           <Checkbox aria-label={`Compare ${run.runId}`} checked={isPicked} disabled={!isPicked && picked.length >= 6} onCheckedChange={(value) => setPicked((list) => value ? [...list, run.runId] : list.filter((id) => id !== run.runId))} />
                           <button type="button" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 text-left" onClick={() => setOpen(rowFromSummary(run))}>
                             <span className="w-28 font-medium">{ALGORITHM_LABEL[run.algorithm]}</span>
@@ -375,7 +375,7 @@ function NumberField({ label, value, min, max, step, onChange }: { label: string
 function ResultCard({ row, rank, maxPenalty, onOpen }: { row: RunRow; rank: number; maxPenalty: number; onOpen: () => void }) {
   const failedChecks = row.checks?.filter((c) => !c.passed).length ?? 0;
   return (
-    <article className={cn("flex flex-col rounded-xl border bg-card p-5 transition-shadow hover:shadow-sm", rank === 1 && row.outcome === "FEASIBLE" && "border-[var(--examopt-success)]/40")}>
+    <article className={cn("flex flex-col rounded-xl border bg-card p-5 transition-shadow hover:shadow-sm", rank === 1 && row.outcome === "FEASIBLE" && "border-success/40")}>
       <header className="flex items-start justify-between gap-2">
         <div>
           <p className="font-mono text-[11px] text-muted-foreground">#{rank}</p>
@@ -399,8 +399,8 @@ function ResultCard({ row, rank, maxPenalty, onOpen }: { row: RunRow; rank: numb
           <PenaltyBar components={row.components} max={maxPenalty} />
         </div>
       )}
-      <div className="mt-auto flex items-center justify-between gap-2 border-t pt-3 mt-5 text-xs">
-        <span className={cn("inline-flex items-center gap-1", row.checks ? (failedChecks ? "text-destructive" : "text-[var(--examopt-success)]") : "text-muted-foreground")}>
+      <div className="mt-auto flex items-center justify-between gap-2 border-t pt-3 text-xs">
+        <span className={cn("inline-flex items-center gap-1", row.checks ? (failedChecks ? "text-destructive" : "text-success") : "text-muted-foreground")}>
           {row.checks ? (failedChecks ? <><CircleAlert className="size-3.5" />{failedChecks} of 10 rules failed</> : <><Check className="size-3.5" />10 of 10 rules passed</>) : "Not validated (solver not run)"}
         </span>
         <Button variant="ghost" size="sm" onClick={onOpen}>Details{row.diagnostics.length ? ` · ${row.diagnostics.length}` : ""}</Button>

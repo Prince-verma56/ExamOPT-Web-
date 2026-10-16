@@ -4,6 +4,10 @@ import { z } from "zod";
 
 const testLabSchema = z.object({ caseIds: z.array(z.string().max(64)).max(32).optional() }).strict();
 
+export async function GET(req: Request) {
+  return createApiRoute({ req, requireAuth: true, requiredPermissions: ["admin"] }, async () => ({ cases: schedulingService.testCases() }));
+}
+
 export async function POST(req: Request) {
   return createApiRoute(
     { req, requireAuth: true, requiredPermissions: ["admin"], schema: testLabSchema, rateLimit: { limit: 30, windowSeconds: 60 } },

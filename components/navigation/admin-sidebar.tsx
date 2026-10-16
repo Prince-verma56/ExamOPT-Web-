@@ -74,8 +74,8 @@ const navGroups: NavigationGroup[] = [
     items: [
       { title: "Constraints", href: "/admin/constraints", icon: SlidersHorizontal },
       { title: "Timetable", href: "/admin/schedules", icon: CalendarRange },
-      { title: "Optimization Lab", href: "/admin/optimization", icon: Cpu, badge: "Phase 2" },
-      { title: "Conflict Analysis", href: "/admin/conflicts", icon: GitBranch, badge: "Phase 2" },
+      { title: "Optimization Lab", href: "/admin/optimization", icon: Cpu },
+      { title: "Conflict Analysis", href: "/admin/conflicts", icon: GitBranch },
     ],
   },
   {

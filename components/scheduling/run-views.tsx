@@ -78,7 +78,7 @@ export function rankRows(rows: RunRow[]) {
   ));
 }
 
-const SEGMENT = ["bg-[var(--chart-1)]", "bg-[var(--chart-3)]", "bg-[var(--chart-5)]", "bg-[var(--chart-2)]"];
+const SEGMENT = ["bg-(--chart-1)", "bg-(--chart-3)", "bg-(--chart-5)", "bg-(--chart-2)"];
 
 /** Soft-penalty composition as a stacked bar, scaled to the largest penalty in view. */
 export function PenaltyBar({ components, max }: { components: PenaltyComponent[]; max: number }) {
@@ -95,7 +95,7 @@ export function PenaltyBar({ components, max }: { components: PenaltyComponent[]
 
 export function PenaltyLegend({ components }: { components: PenaltyComponent[] }) {
   return (
-    <ul className="grid gap-1.5 text-xs sm:grid-cols-2">
+    <ul className="grid gap-1.5 text-xs">
       {components.map((c, i) => (
         <li key={c.key} className="flex items-center gap-2">
           <span className={cn("size-2 shrink-0 rounded-sm", SEGMENT[i % SEGMENT.length])} aria-hidden />
@@ -115,7 +115,7 @@ export function ValidationChecklist({ checks }: { checks: ValidationCheck[] }) {
           <span className="w-5 font-mono text-[11px] text-muted-foreground tabular-nums">{check.rule}</span>
           <span className="flex-1">{check.label}</span>
           {check.passed
-            ? <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--examopt-success)]"><Check className="size-3.5" aria-hidden />Pass</span>
+            ? <span className="inline-flex items-center gap-1 text-xs font-medium text-success"><Check className="size-3.5" aria-hidden />Pass</span>
             : <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive"><X className="size-3.5" aria-hidden />{check.violations} violation{check.violations > 1 ? "s" : ""}</span>}
         </li>
       ))}
@@ -124,7 +124,7 @@ export function ValidationChecklist({ checks }: { checks: ValidationCheck[] }) {
 }
 
 function Best({ on, children }: { on: boolean; children: React.ReactNode }) {
-  return <span className={cn("tabular-nums", on && "font-semibold text-[var(--examopt-success)]")}>{children}{on && <span className="sr-only"> (best among feasible runs)</span>}</span>;
+  return <span className={cn("tabular-nums", on && "font-semibold text-success")}>{children}{on && <span className="sr-only"> (best among feasible runs)</span>}</span>;
 }
 
 /** Ranked comparison. Best values are highlighted only among feasible runs, so an invalid run never looks best. */
@@ -149,9 +149,9 @@ export function ComparisonTable({ rows, onOpen, caption }: { rows: RunRow[]; onO
             <TableHead>Run</TableHead>
             <TableHead>Result</TableHead>
             <TableHead className="text-right">Scheduled</TableHead>
-            <TableHead className="text-right">Hard violations</TableHead>
-            <TableHead className="min-w-40">Soft penalty <span className="font-normal text-muted-foreground">(lower is better)</span></TableHead>
-            <TableHead className="text-right">Extra same-day</TableHead>
+            <TableHead className="text-right">Violations</TableHead>
+            <TableHead className="min-w-32">Soft penalty ↓</TableHead>
+            <TableHead className="text-right">Same-day</TableHead>
             <TableHead className="text-right">Back-to-back</TableHead>
             <TableHead className="text-right">Slots · days</TableHead>
             <TableHead className="text-right">Seat fill</TableHead>

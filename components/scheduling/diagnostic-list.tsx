@@ -6,7 +6,7 @@ import type { Diagnostic } from "@/server/scheduling/domain";
 
 const SEVERITY = {
   error: { icon: CircleAlert, label: "Error", className: "text-destructive", rail: "bg-destructive" },
-  warning: { icon: AlertTriangle, label: "Warning", className: "text-[var(--examopt-warning)]", rail: "bg-[var(--examopt-warning)]" },
+  warning: { icon: AlertTriangle, label: "Warning", className: "text-warning", rail: "bg-warning" },
   info: { icon: Info, label: "Info", className: "text-primary", rail: "bg-primary" },
 } as const;
 
@@ -36,7 +36,7 @@ export function DiagnosticList({ diagnostics, empty = "No diagnostics.", classNa
         const Icon = severity.icon;
         return (
           <li key={`${d.code}-${i}`} className="relative overflow-hidden rounded-lg border bg-card py-3 pr-3 pl-4">
-            <span className={cn("absolute inset-y-0 left-0 w-[3px]", severity.rail)} aria-hidden />
+            <span className={cn("absolute inset-y-0 left-0 w-0.75", severity.rail)} aria-hidden />
             <div className="flex items-start gap-2.5">
               <Icon className={cn("mt-0.5 size-4 shrink-0", severity.className)} aria-label={severity.label} />
               <div className="min-w-0 flex-1 space-y-1.5">

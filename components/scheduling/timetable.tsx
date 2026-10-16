@@ -26,9 +26,9 @@ type Block = RunDetail["assignments"][number];
 type View = "calendar" | "rooms" | "list";
 
 const PROGRAM_STYLE: Record<string, string> = {
-  BCA: "before:bg-[var(--chart-1)]",
-  "BCA-DS": "before:bg-[var(--chart-2)]",
-  MCA: "before:bg-[var(--chart-3)]",
+  BCA: "before:bg-(--chart-1)",
+  "BCA-DS": "before:bg-(--chart-2)",
+  MCA: "before:bg-(--chart-3)",
 };
 
 export function Timetable() {
@@ -114,7 +114,7 @@ export function Timetable() {
       />
 
       {error && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/[0.04] p-4 text-sm">
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/4 p-4 text-sm">
           <span className="flex items-center gap-2 text-destructive"><CircleAlert className="size-4" />{error}</span>
           {runId && <Button variant="outline" size="sm" onClick={() => void loadDetail(runId)}><RefreshCw />Retry</Button>}
         </div>
@@ -128,11 +128,11 @@ export function Timetable() {
         </div>
       )}
 
-      {loading && !error && <div className="space-y-4"><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-[480px] rounded-xl" /></div>}
+      {loading && !error && <div className="space-y-4"><Skeleton className="h-16 rounded-xl" /><Skeleton className="h-120 rounded-xl" /></div>}
 
       {detail && summary && validation && !loading && (
         <>
-          <section className={cn("flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between", validation.valid ? "border-success/30 bg-success/[0.05]" : "border-destructive/30 bg-destructive/[0.04]")} aria-live="polite">
+          <section className={cn("flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between", validation.valid ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/4")} aria-live="polite">
             <div className="flex items-start gap-3">
               {validation.valid ? <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" /> : <ShieldX className="mt-0.5 size-5 shrink-0 text-destructive" />}
               <div className="space-y-0.5">
@@ -148,16 +148,16 @@ export function Timetable() {
             </div>
             <div className="flex items-center gap-2">
               <OutcomeBadge outcome={summary.outcome} evidence={summary.infeasibilityEvidence} legacy={summary.source === "legacy"} />
-              {summary.published && <span className="rounded-full border bg-card px-2.5 py-0.5 text-xs">Published v{summary.published.version}{summary.published.isActive ? " · active" : ""}</span>}
+              {summary.published && <span className="rounded-full border bg-card px-2.5 py-0.5 text-xs whitespace-nowrap">Published v{summary.published.version}{summary.published.isActive ? " · active" : ""}</span>}
             </div>
           </section>
 
           <StatStrip items={[
             { label: "Algorithm", value: ALGORITHM_LABEL[summary.algorithm], hint: summary.runId },
             { label: "Scheduled", value: `${summary.scheduledExams}/${summary.totalExams}`, hint: detail.unscheduled.length ? `${detail.unscheduled.length} not placed` : "all exams placed", tone: detail.unscheduled.length ? "warning" : "default" },
-            { label: "Days used", value: summary.metrics ? `${summary.metrics.daysUsed} of ${summary.metrics.totalDays}` : `${new Set(detail.assignments.map((a) => a.date)).size}`, hint: summary.metrics ? `${summary.metrics.slotsUsed} slots` : undefined },
-            { label: "Seat fill", value: summary.metrics ? `${num(summary.metrics.seatFillPct, 1)}%` : "—", hint: summary.metrics ? `${num(summary.metrics.capacityWasteSeats)} empty seats` : undefined },
-            { label: "Extra same-day", value: summary.metrics ? num(summary.metrics.sameDayExtraExams) : "—", hint: summary.metrics ? `${num(summary.metrics.studentsWithSameDayExams)} students affected` : "not recorded" },
+            { label: "Days used", value: `${detail.liveMetrics.daysUsed} of ${detail.liveMetrics.totalDays}`, hint: `${detail.liveMetrics.slotsUsed} slots` },
+            { label: "Seat fill", value: `${num(detail.liveMetrics.seatFillPct, 1)}%`, hint: `${num(detail.liveMetrics.capacityWasteSeats)} empty seats` },
+            { label: "Extra same-day", value: num(detail.liveMetrics.sameDayExtraExams), hint: `${num(detail.liveMetrics.studentsWithSameDayExams)} students affected` },
             { label: "Generated", value: dateTime(summary.createdAt), hint: summary.source === "engine" ? `engine v${summary.engineVersion}` : "legacy run" },
           ]} />
 
@@ -187,7 +187,7 @@ export function Timetable() {
 
           {view === "calendar" && (
             <div className="overflow-x-auto rounded-xl border bg-card">
-              <div className="grid min-w-[880px]" style={{ gridTemplateColumns: `88px repeat(${days.length}, minmax(0, 1fr))` }}>
+              <div className="grid min-w-220" style={{ gridTemplateColumns: `88px repeat(${days.length}, minmax(0, 1fr))` }}>
                 <div className="border-b bg-muted/30" />
                 {days.map((day, i) => (
                   <div key={day} className="border-b border-l bg-muted/30 px-3 py-2.5">
@@ -215,7 +215,7 @@ export function Timetable() {
                 ))}
               </div>
               <ul className="flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t px-3 py-2 text-xs text-muted-foreground">
-                {Object.entries(PROGRAM_STYLE).map(([name, style]) => <li key={name} className={cn("relative pl-3 before:absolute before:inset-y-0.5 before:left-0 before:w-[3px] before:rounded-full", style)}>{name}</li>)}
+                {Object.entries(PROGRAM_STYLE).map(([name, style]) => <li key={name} className={cn("relative pl-3 before:absolute before:inset-y-0.5 before:left-0 before:w-0.75 before:rounded-full", style)}>{name}</li>)}
                 <li className="flex items-center gap-1"><FlaskConical className="size-3" />Laboratory exam</li>
                 <li className="flex items-center gap-1"><Pin className="size-3 text-primary" />Fixed slot</li>
                 <li className="flex items-center gap-1"><AlertTriangle className="size-3 text-destructive" />Validation issue</li>
@@ -226,7 +226,7 @@ export function Timetable() {
 
           {view === "rooms" && (
             <div className="overflow-x-auto rounded-xl border bg-card">
-              <table className="w-full min-w-[960px] border-collapse text-xs">
+              <table className="w-full min-w-240 border-collapse text-xs">
                 <thead>
                   <tr className="bg-muted/30">
                     <th scope="col" className="sticky left-0 z-10 border-b bg-muted/60 px-3 py-2 text-left font-medium backdrop-blur">Room</th>
@@ -338,9 +338,9 @@ function ExamBlock({ block, issues, onOpen }: { block: Block; issues?: Violation
       type="button"
       onClick={onOpen}
       className={cn(
-        "relative block w-full overflow-hidden rounded-lg border bg-background py-1.5 pr-2 pl-3 text-left outline-none transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[3px] hover:border-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/40",
+        "relative block w-full overflow-hidden rounded-lg border bg-background py-1.5 pr-2 pl-3 text-left outline-none transition-colors before:absolute before:inset-y-0 before:left-0 before:w-0.75 hover:border-foreground/20 focus-visible:ring-3 focus-visible:ring-ring/40",
         PROGRAM_STYLE[block.program ?? ""] ?? "before:bg-muted-foreground",
-        issues?.length && "border-destructive/50 bg-destructive/[0.03]",
+        issues?.length && "border-destructive/50 bg-destructive/3",
       )}
     >
       <span className="flex items-center gap-1">

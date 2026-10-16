@@ -17,9 +17,9 @@ export const OUTCOME_META: Record<RunOutcome, { label: string; tone: Tone; icon:
 };
 
 export const TONE_CLASS: Record<Tone, string> = {
-  success: "border-[color-mix(in_oklch,var(--examopt-success),transparent_70%)] bg-[color-mix(in_oklch,var(--examopt-success),transparent_92%)] text-[var(--examopt-success)]",
+  success: "border-[color-mix(in_oklch,var(--examopt-success),transparent_70%)] bg-[color-mix(in_oklch,var(--examopt-success),transparent_92%)] text-success",
   warning: "border-[color-mix(in_oklch,var(--examopt-warning),transparent_65%)] bg-[color-mix(in_oklch,var(--examopt-warning),transparent_91%)] text-[color-mix(in_oklch,var(--examopt-warning),black_22%)]",
-  error: "border-destructive/30 bg-destructive/[0.07] text-destructive",
+  error: "border-destructive/30 bg-destructive/7 text-destructive",
   neutral: "border-border bg-muted/60 text-muted-foreground",
 };
 

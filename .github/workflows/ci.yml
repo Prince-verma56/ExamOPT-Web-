@@ -32,11 +32,19 @@ jobs:
     - name: Test
       run: npm run test
 
+    - name: Generate Prisma Client
+      run: npx prisma generate
+
     - name: Build
       run: npm run build
       env:
-        # Provide safe placeholder variables to pass build
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
-        CLERK_SECRET_KEY: sk_test_placeholder
+        NODE_OPTIONS: "--max-old-space-size=4096"
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_d2VsY29tZS1ld2UtMzM0OC5jbGVyay5hY2NvdW50cy5kZXYk
+        CLERK_SECRET_KEY: sk_test_wc8DA1HvT8Fhdx5goIhfLo6dQmy0e0wAFiUzwt4Kt9
         NEXT_PUBLIC_APP_URL: http://localhost:3000
+        DATABASE_BACKEND: supabase
+        FEATURE_DEMO_MODE: "true"
+        FEATURE_AUTH: "true"
+        NEXT_PUBLIC_SUPABASE_URL: https://tvyiqyngqehrxrcxqwei.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2eWlxeW5ncWVocnhyY3hxd2VpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxMjQ0NTAsImV4cCI6MjEwNzcwMDQ1MH0.o7ZVtx-bJ9kSHcf4pJQWrauaalB_SFPhNx_AA1Y2RJA
         DATABASE_URL: postgresql://postgres:password@localhost:5432/hackathon

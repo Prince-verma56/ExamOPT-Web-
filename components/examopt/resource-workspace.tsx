@@ -96,7 +96,11 @@ export function ResourceWorkspace({ resource }: { resource: ResourceName }) {
     } finally { setLoading(false); }
   }, [config.rowKey, page, resource, search]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    // Fetch on mount and when filters change; state updates happen after the awaited response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
   const sortedRows = useMemo(() => [...rows].sort((a, b) => String(readPath(a, config.columns[0].key) ?? "").localeCompare(String(readPath(b, config.columns[0].key) ?? ""))), [config.columns, rows]);
 

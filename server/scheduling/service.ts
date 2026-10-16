@@ -4,9 +4,10 @@ import { ALGORITHMS } from "./algorithms";
 import { ALGORITHM_IDS, DEFAULT_CONFIG, type AlgorithmId, type EngineConfig } from "./domain";
 import { compareRunResults, mergeConfig, prepareDataset, runAlgorithm, type PreparedDataset, type RunResult } from "./engine";
 import { loadRawDataset, SchedulingServiceError } from "./loader";
+import { computeMetrics } from "./metrics";
 import { normalizeDataset } from "./normalize";
 import { runStore, type RunSummary } from "./persistence";
-import { runTestLab } from "./test-lab";
+import { runTestLab, TEST_CASES } from "./test-lab";
 import { validateSchedule } from "./validator";
 
 export { SchedulingServiceError };
@@ -105,12 +106,15 @@ export const schedulingService = {
     if (!stored) throw new SchedulingServiceError("NOT_FOUND", "Scheduling run not found.", 404);
     // Re-validate against today's data: catches legacy runs and data edits made after the run.
     const liveValidation = validateSchedule(dataset.input, stored.assignments);
+    // Soft metrics recomputed from the saved assignments, so legacy runs get them too.
+    const liveMetrics = computeMetrics(dataset.input, stored.assignments, stored.summary.config?.weights ?? DEFAULT_CONFIG.weights);
     const assigned = new Set(stored.assignments.map((a) => a.examId));
     return {
       summary: stored.summary,
       currentFingerprint: dataset.fingerprint,
       dataChangedSinceRun: stored.summary.datasetFingerprint === null ? null : stored.summary.datasetFingerprint !== dataset.fingerprint,
       liveValidation,
+      liveMetrics,
       assignments: enrichAssignments(dataset, stored.assignments),
       unscheduled: dataset.model.exams.filter((e) => !assigned.has(e.id)).map((e) => ({ examId: e.id, examName: e.name, program: e.program, semester: e.semester })),
       slots: dataset.model.slots,
@@ -133,6 +137,10 @@ export const schedulingService = {
       ranking: "Feasible (validator-passed) runs first, then fewest unscheduled exams, then lowest soft penalty, then fastest.",
       runs: ranked.map((run, i) => ({ rank: i + 1, ...run })),
     };
+  },
+
+  testCases() {
+    return TEST_CASES.map(({ id, name, category, expected }) => ({ id, name, category, expected }));
   },
 
   testLab(caseIds?: string[]) {
