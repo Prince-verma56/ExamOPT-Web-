@@ -1,0 +1,30 @@
+[
+  {
+    "key": "student+clerk_test@example.com",
+    "rollNo": "GLA26-BCA-0001",
+    "linkedAt": "2026-10-17T02:40:00.000Z",
+    "linkedBy": "system",
+    "note": "Preconfigured Demo Student Account (Akash Singh)"
+  },
+  {
+    "key": "student@examopt.com",
+    "rollNo": "GLA26-BCA-0001",
+    "linkedAt": "2026-10-17T02:40:00.000Z",
+    "linkedBy": "system",
+    "note": "Preconfigured Demo Student Account (Akash Singh)"
+  },
+  {
+    "key": "pvcodingz96@gmail.com",
+    "rollNo": "GLA26-BCA-0001",
+    "linkedAt": "2026-10-17T02:40:00.000Z",
+    "linkedBy": "system",
+    "note": "Admin Account with Linked Student Profile"
+  },
+  {
+    "key": "admin+clerk_test@example.com",
+    "rollNo": "GLA26-BCA-0001",
+    "linkedAt": "2026-10-17T02:40:00.000Z",
+    "linkedBy": "system",
+    "note": "Demo Admin Account with Linked Student Profile"
+  }
+]
