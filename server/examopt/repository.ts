@@ -58,7 +58,25 @@ async function query<T>(
         return { data: fallbackResult.data as T, count: fallbackResult.count };
       }
     }
-    return { data: ([] as unknown) as T, count: 0 };
+    const method = options.method ?? "GET";
+    const writing = method !== "GET";
+    const detail = result.error.message;
+    if (/\(409\)|duplicate key|23505/.test(detail)) {
+      throw new ExamOptRepositoryError("CONFLICT", "A record with this identifier already exists.", 409);
+    }
+    if (/23514|check constraint/.test(detail)) {
+      throw new ExamOptRepositoryError("VALIDATION_ERROR", "The database rejected a value outside its allowed range.", 400);
+    }
+    if (/23503|foreign key/.test(detail)) {
+      throw new ExamOptRepositoryError("REFERENCED_RESOURCE", "This record is referenced by another scheduling record.", 409);
+    }
+    // Never turn a failed database request into an empty workspace table. The
+    // frontend can surface a retryable error instead of implying there is no data.
+    throw new ExamOptRepositoryError(
+      writing ? "PERSISTENCE_FAILED" : "DATA_SOURCE_UNAVAILABLE",
+      writing ? `Could not save ${table}.` : `Could not read ${table} from the scheduling data source.`,
+      writing ? 502 : 503,
+    );
   }
   return { data: result.data as T, count: result.count };
 }
@@ -150,6 +168,24 @@ function matchSearch(row: Row, search: string | undefined, keys: string[]) {
 }
 
 export const examOptRepository = {
+  /**
+   * Connectivity probe for the same Supabase REST path used by the scheduling
+   * workspace. It intentionally reads one harmless row and never leaks
+   * provider credentials or upstream error bodies.
+   */
+  async health() {
+    try {
+      await query<Row[]>("rooms", { query: { select: "room_id", limit: "1" } });
+      return { connected: true, source: "supabase-rest" as const };
+    } catch (error) {
+      return {
+        connected: false,
+        source: "supabase-rest" as const,
+        code: error instanceof ExamOptRepositoryError ? error.code : "DATA_SOURCE_UNAVAILABLE",
+      };
+    }
+  },
+
   async listRooms(input: ListInput & { roomType?: string; isActive?: string }) {
     const { data } = await query<Row[]>("rooms", { query: { select: "*" } });
     const filtered = data.filter((row) =>

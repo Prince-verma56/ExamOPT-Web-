@@ -1,10 +1,10 @@
 /**
  * ExamOpt Studio — The Scheduling Problem Section
- * Pinned interactive 3D Orbital Wheel of Constraints:
- * • Pinned sticky viewport until all challenge images are fully scrolled
- * • Uses OrbitalImageWheel for 3D card depth, blur, and focus transitions
- * • Centered editorial header (eyebrow, title, subtitle, CTA link)
- * • Smooth automatic handoff to next section upon completion
+ * Features:
+ * • Rounded top corners with parallax sheet overlap over the hero section
+ * • Centered editorial header
+ * • Pinned 3D Orbital Wheel with balanced card gap, slow smooth scrolling,
+ *   and automatic progression to the next section
  */
 
 "use client";
@@ -67,58 +67,68 @@ const CHALLENGE_IMAGES: OrbitalImageWheelImage[] = [
   },
 ];
 
+// Duplicate items so cards are closer together with smaller, elegant gaps
+const WHEEL_CARDS: OrbitalImageWheelImage[] = [
+  ...CHALLENGE_IMAGES,
+  ...CHALLENGE_IMAGES,
+];
+
 export function ProblemSection() {
   return (
-    <div id="problem" className="relative w-full scroll-mt-20">
-      <OrbitalImageWheel
-        images={CHALLENGE_IMAGES}
-        turns={1.5}
-        scrollLength={260}
-        itemWidth={250}
-        itemHeight={340}
-        cropRatio={0.72}
-        captionOffset={10}
-        className="bg-[#faf9f5] border-t border-[#ebe7df]/60"
+    <section
+      id="problem"
+      className="relative z-20 -mt-10 sm:-mt-14 lg:-mt-16 rounded-t-[36px] sm:rounded-t-[48px] lg:rounded-t-[56px] overflow-hidden bg-[#faf9f5] border-t border-white/90 shadow-[0_-20px_50px_rgba(15,23,42,0.06)] scroll-mt-20"
+    >
+      {/* ── 1. Text Content at Top ─────────────────────────────────── */}
+      <header
+        aria-labelledby="problem-heading"
+        className="mx-auto flex max-w-[840px] flex-col items-center px-5 pb-10 pt-16 text-center sm:px-8 sm:pb-12 sm:pt-20 lg:pb-14 lg:pt-24"
       >
-        {/* ── Centered Pinned Header ─────────────────────────────────── */}
-        <div className="mx-auto max-w-[840px] text-center">
-          {/* Eyebrow */}
-          <p className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#1a62ff]">
-            <span className="w-5 h-px bg-[#1a62ff]/60 inline-block" />
-            The Scheduling Problem
-            <span className="w-5 h-px bg-[#1a62ff]/60 inline-block" />
+        <p className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.25em] text-[#1a62ff] sm:text-[11px]">
+          <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
+          The Scheduling Problem
+          <span className="inline-block h-px w-5 bg-[#1a62ff]/60" />
+        </p>
+
+        <h2
+          id="problem-heading"
+          className="mt-3.5 text-[2.2rem] font-bold leading-[1.08] tracking-tight text-slate-900 sm:text-[2.8rem] lg:text-[3.3rem]"
+        >
+          One timetable. <br className="hidden sm:block" />
+          <span className="font-normal italic text-[#1a62ff]">
+            A hundred moving parts.
+          </span>
+        </h2>
+
+        <div className="mx-auto mt-4 max-w-[620px]">
+          <p className="text-sm font-normal leading-relaxed text-slate-600 sm:text-[15px]">
+            Students, rooms, fixed slots and practical requirements all compete for the
+            same sessions. A single change can ripple through the entire timetable.
           </p>
-
-          {/* Headline */}
-          <h2
-            id="problem-heading"
-            className="mt-3 text-[2.2rem] sm:text-[2.7rem] lg:text-[3.2rem] font-bold tracking-tight text-slate-900 leading-[1.08]"
-          >
-            One timetable.{" "}
-            <br className="hidden sm:block" />
-            <span className="font-normal italic text-[#1a62ff]">
-              A hundred moving parts.
-            </span>
-          </h2>
-
-          {/* Subtitle & Link */}
-          <div className="mt-3 mx-auto max-w-[620px]">
-            <p className="text-sm sm:text-[15px] text-slate-600 leading-relaxed font-normal">
-              Students, rooms, fixed slots and practical requirements all compete for the
-              same sessions. A single change can ripple through the entire timetable.
-            </p>
-            <div className="mt-2.5">
-              <Link
-                href="#how-it-works"
-                className="inline-flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-[#1a62ff] hover:text-[#0e52e2] transition-colors group"
-              >
-                See how ExamOpt resolves constraints
-                <ArrowRight className="size-3.5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
+          <div className="mt-3">
+            <Link
+              href="#how-it-works"
+              className="group inline-flex items-center gap-1.5 text-xs font-semibold text-[#1a62ff] transition-colors hover:text-[#0e52e2] sm:text-[13px]"
+            >
+              See how ExamOpt resolves constraints
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
         </div>
-      </OrbitalImageWheel>
-    </div>
+      </header>
+
+      {/* ── 2. Pinned Circular Gallery Animation with Smooth Scrolling ─── */}
+      <OrbitalImageWheel
+        images={WHEEL_CARDS}
+        turns={1.2}
+        scrollLength={360}
+        scrollSensitivity={0.55}
+        itemWidth={290}
+        itemHeight={370}
+        cropRatio={0.7}
+        captionOffset={10}
+        className="bg-transparent"
+      />
+    </section>
   );
 }

@@ -41,7 +41,7 @@ export function TransparencySection() {
       name="transparency"
       id="transparency"
       aria-labelledby="transparency-heading"
-      className="relative isolate scroll-mt-20 overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#edf1f8_18%,#edf1f8_80%,var(--canvas)_100%)] pb-36 pt-24 lg:pb-44 lg:pt-36"
+      className="relative isolate scroll-mt-20 overflow-hidden bg-[linear-gradient(180deg,var(--canvas)_0%,#f1f4fb_18%,#eef3ff_78%,var(--canvas)_100%)] pb-28 pt-24 lg:pb-32 lg:pt-32"
     >
       {/* Soft daylight and a faint technical grid behind the product */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -82,7 +82,7 @@ export function TransparencySection() {
 
           {/* ── Product composition ──────────────────────────────────── */}
           <div className="relative lg:col-span-7 lg:pl-4">
-            <div data-graph-panel className="glass rounded-[26px] p-1.5">
+            <div data-graph-panel className="glass rounded-[26px] p-1.5 ring-1 ring-primary/10">
               <figure
                 aria-label="Validation workspace preview with a sample conflict graph and validation report"
                 className="overflow-hidden rounded-[21px] border border-hairline bg-white"

@@ -14,7 +14,7 @@ import { SAMPLE_DATASET } from "@/components/marketing/previews/sample-data";
 
 function PreviewSurface({ title, tag, children }: { title: string; tag: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-hairline bg-white text-[12.5px] shadow-panel">
+    <div className="overflow-hidden rounded-2xl border border-hairline bg-white/90 text-[12.5px] shadow-[0_12px_32px_-26px_rgb(23_32_51/0.45)]">
       <div className="flex items-center justify-between border-b border-hairline bg-[#fbfaf7] px-4 py-2.5">
         <span className="font-medium text-foreground">{title}</span>
         {tag}
@@ -168,7 +168,7 @@ export function HowItWorksSection() {
       name="process"
       id="how-it-works"
       aria-labelledby="how-heading"
-      className="relative scroll-mt-20 border-t border-hairline bg-white py-24 lg:py-32"
+      className="relative scroll-mt-20 border-t border-[#ebe7df]/60 bg-[#faf9f5] py-24 lg:py-32"
     >
       <Container>
         <div className="grid gap-8 lg:grid-cols-12 lg:items-end lg:gap-10">
@@ -191,50 +191,65 @@ export function HowItWorksSection() {
           </Reveal>
         </div>
 
-        <div data-rail className="relative mt-16 lg:mt-20">
-          {/* Desktop rail: one line through the three stages */}
-          <div aria-hidden className="relative hidden h-10 lg:block">
-            <div className="absolute left-5 right-[calc((100%_-_5rem)/3_-_1.25rem)] top-1/2 h-px -translate-y-1/2 bg-hairline">
-              <div data-rail-fill="x" className="absolute inset-0 origin-left bg-primary" />
+        <div
+          data-rail
+          className="relative mt-16 overflow-hidden rounded-[28px] border border-hairline bg-white/85 p-6 shadow-[0_24px_60px_-48px_rgb(23_32_51/0.45)] sm:p-8 lg:mt-20 lg:p-10"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(ellipse_at_top,rgb(40_85_199/0.07),transparent_72%)]"
+          />
+          <div className="relative mb-8 flex items-center justify-between border-b border-hairline pb-4 lg:mb-10">
+            <p className="type-label text-muted-foreground">A connected workflow</p>
+            <span className="rounded-full border border-primary/10 bg-primary-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.1em] text-primary">
+              3 stages
+            </span>
+          </div>
+          <div className="relative">
+            {/* Desktop rail: one line through the three stages */}
+            <div aria-hidden className="relative hidden h-10 lg:block">
+              <div className="absolute left-5 right-[calc((100%_-_5rem)/3_-_1.25rem)] top-1/2 h-px -translate-y-1/2 bg-hairline">
+                <div data-rail-fill="x" className="absolute inset-0 origin-left bg-primary" />
+              </div>
+              <div className="grid h-full grid-cols-3 gap-10">
+                {steps.map((step) => (
+                  <div key={step.n} className="relative flex items-center">
+                    <StageNode n={step.n} axis="x" />
+                    {step.handoff && (
+                      <span
+                        data-rail-packet
+                        className="absolute left-[calc(50%_+_2.5rem)] top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-[0_1px_2px_rgb(23_32_51/0.05)]"
+                      >
+                        {step.handoff}
+                        <span className="text-primary">→</span>
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid h-full grid-cols-3 gap-10">
+
+            {/* Mobile rail: vertical line beside the stacked stages */}
+            <div aria-hidden className="absolute bottom-0 left-5 top-5 w-px bg-hairline lg:hidden">
+              <div data-rail-fill="y" className="absolute inset-0 origin-top bg-primary" />
+            </div>
+
+            <ol className="relative grid gap-14 lg:mt-8 lg:grid-cols-3 lg:gap-10">
               {steps.map((step) => (
-                <div key={step.n} className="relative flex items-center">
-                  <StageNode n={step.n} axis="x" />
-                  {step.handoff && (
-                    <span
-                      data-rail-packet
-                      className="absolute left-[calc(50%_+_2.5rem)] top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-hairline bg-white px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-[0_1px_2px_rgb(23_32_51/0.05)]"
-                    >
-                      {step.handoff}
-                      <span className="text-primary">→</span>
-                    </span>
-                  )}
-                </div>
+                <li data-step key={step.n} className="relative pl-14 lg:pl-0">
+                  <span className="absolute left-0 top-0 lg:hidden">
+                    <StageNode n={step.n} axis="y" />
+                  </span>
+                  <h3 className="pt-2 text-[19px] font-semibold tracking-[-0.015em] text-foreground lg:pt-0">
+                    <span className="sr-only">Step {step.n}: </span>
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 max-w-[36ch] text-[15px] leading-relaxed text-muted-foreground">{step.body}</p>
+                  <div className="mt-7 max-w-[400px]">{step.preview}</div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
-
-          {/* Mobile rail: vertical line beside the stacked stages */}
-          <div aria-hidden className="absolute bottom-0 left-5 top-5 w-px bg-hairline lg:hidden">
-            <div data-rail-fill="y" className="absolute inset-0 origin-top bg-primary" />
-          </div>
-
-          <ol className="relative grid gap-14 lg:mt-8 lg:grid-cols-3 lg:gap-10">
-            {steps.map((step) => (
-              <li data-step key={step.n} className="relative pl-14 lg:pl-0">
-                <span className="absolute left-0 top-0 lg:hidden">
-                  <StageNode n={step.n} axis="y" />
-                </span>
-                <h3 className="pt-2 text-[19px] font-semibold tracking-[-0.015em] text-foreground lg:pt-0">
-                  <span className="sr-only">Step {step.n}: </span>
-                  {step.title}
-                </h3>
-                <p className="mt-3 max-w-[36ch] text-[15px] leading-relaxed text-muted-foreground">{step.body}</p>
-                <div className="mt-7 max-w-[400px]">{step.preview}</div>
-              </li>
-            ))}
-          </ol>
         </div>
       </Container>
     </Scene>

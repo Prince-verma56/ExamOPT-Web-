@@ -90,16 +90,38 @@ export function ExamOptNav() {
   const scrolled = useScroll(16);
   const active = useActiveSection();
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY < 60) {
+        setVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // Scrolling down -> hide navbar smoothly
+        setVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        // Scrolling up -> show navbar smoothly
+        setVisible(true);
+      }
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   return (
     <header
       data-nav-shell
       data-enter
       className={cn(
-        "fixed inset-x-0 top-0 z-50 border-b transition-[background-color,border-color,box-shadow] duration-500",
+        "fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ease-in-out will-change-transform",
+        visible ? "translate-y-0" : "-translate-y-full",
         scrolled
-          ? "border-hairline/80 bg-canvas/75 shadow-[0_8px_30px_-24px_rgb(23_32_51/0.35)] backdrop-blur-xl backdrop-saturate-150"
+          ? "border-hairline/80 bg-white/80 shadow-[0_8px_30px_-24px_rgb(23_32_51/0.25)] backdrop-blur-xl backdrop-saturate-150"
           : "border-transparent bg-transparent"
       )}
     >

@@ -160,14 +160,19 @@ function StudentPhonePreview() {
 
 export function AudiencesSection() {
   return (
-    <section id="product" aria-label="Administrator and student experiences" className="scroll-mt-20 bg-white py-24 lg:py-32">
+    <section id="product" aria-label="Administrator and student experiences" className="scroll-mt-20 bg-[#faf9f5] border-t border-[#ebe7df]/60 py-24 lg:py-32">
       <Container>
-        <Reveal className="grid gap-5 lg:grid-cols-12" stagger={0.14} y={36} start="top 78%">
+        <Reveal
+          className="grid gap-px overflow-hidden rounded-[30px] border border-hairline bg-hairline shadow-[0_24px_60px_-48px_rgb(23_32_51/0.42)] lg:grid-cols-12"
+          stagger={0.14}
+          y={36}
+          start="top 78%"
+        >
           {/* Administrators */}
           <article
             data-reveal
             aria-labelledby="admin-heading"
-            className="flex flex-col overflow-hidden rounded-[28px] border border-hairline bg-canvas lg:col-span-7"
+            className="flex flex-col overflow-hidden bg-[#fbfaf7] lg:col-span-7"
           >
             <div className="p-7 sm:p-10 lg:p-12">
               <Eyebrow>For administrators</Eyebrow>
@@ -199,7 +204,7 @@ export function AudiencesSection() {
             data-reveal
             id="students"
             aria-labelledby="student-heading"
-            className="relative flex scroll-mt-20 flex-col overflow-hidden rounded-[28px] border border-[#dfe5f3] bg-primary-soft lg:col-span-5"
+            className="relative flex scroll-mt-20 flex-col overflow-hidden bg-[#eef3ff] lg:col-span-5"
           >
             <div
               aria-hidden

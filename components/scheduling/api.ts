@@ -43,6 +43,12 @@ export function errorMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) return "Your session has expired. Sign in again to continue.";
     if (error.status === 403) return "Your account does not have administrator access to the scheduling engine.";
+    if (error.status === 503 || error.code === "DATA_SOURCE_UNAVAILABLE") {
+      return "The scheduling data service is temporarily unavailable. Please retry in a moment.";
+    }
+    if (error.status === 502 || error.code === "PERSISTENCE_FAILED") {
+      return "The scheduling data service could not save that change. Please retry before making another edit.";
+    }
     return error.message;
   }
   return error instanceof Error ? error.message : "Something went wrong.";

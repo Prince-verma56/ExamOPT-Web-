@@ -20,7 +20,7 @@ export function FinalCTA() {
     <Scene
       name="closing"
       aria-labelledby="cta-heading"
-      className="relative isolate overflow-hidden bg-canvas pt-24 sm:pt-28 lg:pt-32"
+      className="relative isolate overflow-hidden bg-canvas pt-20 sm:pt-24 lg:pt-28"
     >
       <Container className="relative z-10">
         <div className="mx-auto flex max-w-[780px] flex-col items-center text-center">
@@ -50,7 +50,7 @@ export function FinalCTA() {
       </Container>
 
       {/* Campus photograph: sky fades into the canvas, forecourt meets the footer */}
-      <div className="relative -mt-10 h-[clamp(300px,46vw,640px)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_38%)] sm:-mt-16 lg:-mt-24">
+      <div className="relative -mt-6 h-[clamp(300px,38vw,560px)] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_30%)] sm:-mt-10 lg:-mt-16">
         <div data-cta-photo className="absolute inset-0 origin-bottom">
           <Image
             src="/Images/BG Images/Elegant Neoclassical Campus Facade.png"

@@ -259,17 +259,38 @@ export function OrbitalImageWheel({
   const boundedSubtitleDirection =
     subtitleDirection === "bottom" ? "bottom" : "top";
 
-  const responsiveWheelSize = clamp(viewportWidth * 1.65, 900, 2400);
+  // Keep the orbit comfortably inside the viewport. A previous 1.65× width
+  // placed the active cards at the extreme edges on desktop, which made the
+  // images feel disconnected from the gallery rather than featured by it.
+  const responsiveWheelSize = clamp(viewportWidth * 0.94, 680, 1450);
   const boundedWheelSize = clamp(wheelSize ?? responsiveWheelSize, 700, 2600);
   const radius = boundedWheelSize / 2;
-  const titleLabels = useMemo(
-    () => images.map((img, i) => img.label ?? img.alt ?? `Image ${i + 1}`),
-    [images],
-  );
-  const titleTrackLabels = useMemo(() => titleLabels, [titleLabels]);
+  const uniqueLabels = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    images.forEach((img, i) => {
+      const label = img.label ?? img.alt ?? `Image ${i + 1}`;
+      if (!seen.has(label)) {
+        seen.add(label);
+        list.push(label);
+      }
+    });
+    return list;
+  }, [images]);
+
+  const titleTrackLabels = uniqueLabels;
+
+  const activeImage = useMemo(() => {
+    if (images.length === 0) return null;
+    return images[activeIndex] ?? images[0];
+  }, [images, activeIndex]);
+
+  const activeLabel = activeImage?.label ?? activeImage?.alt ?? "";
   const activeTitleTrackIndex = Math.max(
     0,
-    Math.min(activeIndex, titleTrackLabels.length - 1),
+    uniqueLabels.findIndex((l) => l === activeLabel) !== -1
+      ? uniqueLabels.findIndex((l) => l === activeLabel)
+      : activeIndex % (uniqueLabels.length || 1),
   );
 
   const handleTitleClick = useCallback(
@@ -277,9 +298,15 @@ export function OrbitalImageWheel({
       const trigger = wheelScrollTriggerRef.current;
       if (!trigger || images.length === 0) return;
 
+      const targetLabel = uniqueLabels[index];
+      const imgIndex = images.findIndex(
+        (img) => (img.label ?? img.alt) === targetLabel,
+      );
+      const safeIndex = imgIndex !== -1 ? imgIndex : index;
+
       const currentProgress = clamp(trigger.progress, 0, 1);
       const targetProgress = getSnapProgressForIndex(
-        index,
+        safeIndex,
         images.length,
         boundedTurns,
         currentProgress,
@@ -293,7 +320,7 @@ export function OrbitalImageWheel({
       const fromScroll = scrollStart + currentProgress * scrollRange;
       const toScroll = scrollStart + targetProgress * scrollRange;
 
-      setActiveIndex(index);
+      setActiveIndex(safeIndex);
       titleClickTweenRef.current?.kill();
 
       const proxy = { scroll: fromScroll };
@@ -306,11 +333,11 @@ export function OrbitalImageWheel({
           trigger.scroll(proxy.scroll);
         },
         onComplete: () => {
-          setActiveIndex(index);
+          setActiveIndex(safeIndex);
         },
       });
     },
-    [images.length, boundedTurns],
+    [images, uniqueLabels, boundedTurns],
   );
 
   useEffect(() => {
@@ -490,11 +517,6 @@ export function OrbitalImageWheel({
     titleTrackXToRef.current(targetX);
   }, [activeTitleTrackIndex, titleTrackLabels, viewportWidth]);
 
-  const activeImage = useMemo(() => {
-    if (images.length === 0) return null;
-    return images[activeIndex] ?? images[0];
-  }, [images, activeIndex]);
-
   if (images.length === 0) {
     return null;
   }
@@ -507,7 +529,7 @@ export function OrbitalImageWheel({
     >
       <div
         ref={viewportRef}
-        className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-between"
+        className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-between bg-inherit"
       >
         {children && (
           <div className="relative z-40 pointer-events-auto w-full pt-8 sm:pt-10 lg:pt-12 px-4 sm:px-8">
@@ -517,11 +539,11 @@ export function OrbitalImageWheel({
 
         <div
           ref={wheelRef}
-          className="absolute left-1/2 -translate-x-1/2"
+          className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
           style={{
             width: boundedWheelSize,
             height: boundedWheelSize,
-            bottom: `-${boundedWheelSize * boundedCropRatio}px`,
+            top: "clamp(240px, 35vh, 340px)",
           }}
         >
           <div
