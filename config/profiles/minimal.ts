@@ -1,0 +1,16 @@
+export const minimalProfile = {
+  preloader: true,
+  auth: true,
+  otp: false,
+  email: false,
+  storage: false,
+  payments: false,
+  redis: false,
+  ai: false,
+  voice: false,
+  rag: false,
+  agents: false,
+  mcp: false,
+  analytics: false,
+  demoMode: true,
+};

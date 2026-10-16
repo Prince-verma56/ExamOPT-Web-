@@ -1,0 +1,16 @@
+export const fullProfile = {
+  preloader: true,
+  auth: true,
+  otp: true,
+  email: true,
+  storage: true,
+  payments: true,
+  redis: true,
+  ai: true,
+  voice: true,
+  rag: true,
+  agents: true,
+  mcp: true,
+  analytics: true,
+  demoMode: true,
+};

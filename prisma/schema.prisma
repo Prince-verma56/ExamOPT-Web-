@@ -1,0 +1,417 @@
+// Prisma Schema - Fullstack Hackathon Template
+//
+// This is the foundational schema. Domain-specific models
+// (health, education, commerce) should be added when a specific
+// problem statement requires them.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+/// Core user model. Extended by domain modules as needed.
+model User {
+  id            String    @id @default(cuid())
+  clerkUserId   String    @unique
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  conversations Conversation[]
+  memories      Memory[]
+  documents     Document[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// --- Notifications Model ---
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String    
+  title     String
+  message   String
+  channel   String    
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  metadata  Json?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// --- Audit Log Model ---
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  resource   String
+  resourceId String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}
+
+// --- Idempotency Model ---
+
+model IdempotencyKey {
+  key        String   @id
+  status     String   // 'processing', 'completed', 'failed'
+  result     Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("idempotency_keys")
+}
+
+// --- Jobs and Scheduling Models ---
+
+model Job {
+  id          String    @id @default(cuid())
+  name        String
+  payload     Json?
+  status      String    // 'queued', 'running', 'completed', 'failed', 'retrying', 'cancelled'
+  attempts    Int       @default(0)
+  maxRetries  Int       @default(3)
+  error       String?
+  runAt       DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@map("jobs")
+}
+
+model ScheduledJob {
+  id             String    @id @default(cuid())
+  name           String
+  payload        Json?
+  cronExpression String?
+  intervalMs     Int?
+  nextRunAt      DateTime
+  lastRunAt      DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@map("scheduled_jobs")
+}
+
+model DeviceRegistration {
+  id         String   @id @default(cuid())
+  userId     String
+  deviceId   String
+  platform   String   // 'ios', 'android', 'web'
+  token      String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@map("device_registrations")
+}
+
+// --- AI Core Models ---
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String?
+  channel   String   @default("text") // text, voice, agent
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  metadata  Json?
+
+  messages  Message[]
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           String       // user, assistant, system, tool
+  content        String
+  createdAt      DateTime     @default(now())
+  sequence       Int          @default(0)
+  metadata       Json?
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sequence])
+  @@map("messages")
+}
+
+model Memory {
+  id         String   @id @default(cuid())
+  userId     String
+  content    String
+  sourceId   String?  // e.g., conversationId
+  importance Int      @default(0)
+  expiresAt  DateTime?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memories")
+}
+
+// --- RAG / Document Models ---
+
+model Document {
+  id             String          @id @default(cuid())
+  userId         String?
+  organizationId String?
+  filename       String
+  mimeType       String
+  source         String?
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  chunks         DocumentChunk[]
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  documentId String
+  content    String
+  chunkIndex Int
+  metadata   Json?
+  
+  // Note: Adjust the vector dimension based on your embedding model (e.g., 1536 for OpenAI)
+  embedding  Unsupported("vector(1536)")?
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_chunks")
+}
+
+// =============================================================================
+// ExamOpt Studio — Domain Models
+// Problem Statement C10: Intelligent Examination Timetable Optimization System
+// =============================================================================
+
+/// Room or laboratory available for examinations.
+model ExamRoom {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  building     String?
+  capacity     Int
+  roomType     String   @default("standard") // "standard" | "lab" | "auditorium"
+  facilities   Json?    // e.g. { "computers": true, "projector": true }
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  unavailabilities RoomUnavailability[]
+  subjectConstraints SubjectConstraint[]
+
+  @@index([roomType])
+  @@index([isActive])
+  @@map("exam_rooms")
+}
+
+/// Examination time slot (a specific date + start/end time).
+model TimeSlot {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  startTime   String   // "HH:MM" 24h format
+  endTime     String   // "HH:MM" 24h format
+  session     String   @default("morning") // "morning" | "afternoon" | "evening"
+  label       String?  // optional human label e.g. "Day 1 - Morning"
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  roomUnavailabilities    RoomUnavailability[]
+  subjectUnavailabilities SubjectUnavailability[]
+  fixedSubjects           Subject[]              @relation("FixedSlot")
+
+  @@unique([date, startTime, session])
+  @@index([date])
+  @@index([isAvailable])
+  @@map("time_slots")
+}
+
+/// Academic subject / examination.
+model Subject {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  program         String   // e.g. "B.Tech CSE"
+  semester        Int
+  durationMinutes Int      @default(180)
+  examType        String   @default("theory") // "theory" | "practical" | "combined"
+  requiresLab     Boolean  @default(false)
+  fixedSlotId     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fixedSlot        TimeSlot?             @relation("FixedSlot", fields: [fixedSlotId], references: [id])
+  unavailabilities SubjectUnavailability[]
+  enrollments      Enrollment[]
+  constraints      SubjectConstraint[]
+
+  @@index([program, semester])
+  @@index([examType])
+  @@index([isActive])
+  @@map("subjects")
+}
+
+/// Student group (e.g. a class/section).
+model StudentGroup {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  program   String
+  semester  Int
+  strength  Int      @default(0) // expected student count
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students  Student[]
+
+  @@index([program, semester])
+  @@map("student_groups")
+}
+
+/// Individual student record.
+model Student {
+  id           String   @id @default(cuid())
+  rollNumber   String   @unique
+  name         String
+  email        String?  @unique
+  groupId      String?
+  program      String
+  semester     Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group        StudentGroup? @relation(fields: [groupId], references: [id])
+  enrollments  Enrollment[]
+
+  @@index([groupId])
+  @@index([program, semester])
+  @@map("students")
+}
+
+/// Enrollment: a student enrolled in a subject (including backlogs).
+model Enrollment {
+  id         String   @id @default(cuid())
+  studentId  String
+  subjectId  String
+  isBacklog  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject    Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subjectId])
+  @@index([studentId])
+  @@index([subjectId])
+  @@map("enrollments")
+}
+
+/// Room unavailability for a given time slot.
+model RoomUnavailability {
+  id         String   @id @default(cuid())
+  roomId     String
+  slotId     String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  room       ExamRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  slot       TimeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, slotId])
+  @@index([roomId])
+  @@index([slotId])
+  @@map("room_unavailabilities")
+}
+
+/// Subject unavailability for a given time slot.
+model SubjectUnavailability {
+  id        String   @id @default(cuid())
+  subjectId String
+  slotId    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  slot      TimeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([subjectId, slotId])
+  @@index([subjectId])
+  @@index([slotId])
+  @@map("subject_unavailabilities")
+}
+
+/// Subject-to-room-type or specific room constraint.
+model SubjectConstraint {
+  id              String   @id @default(cuid())
+  subjectId       String
+  constraintType  String   // "requires_room_type" | "requires_room" | "min_capacity"
+  roomId          String?  // specific room, if constraintType == "requires_room"
+  requiredRoomType String? // e.g. "lab"
+  minCapacity     Int?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  room            ExamRoom? @relation(fields: [roomId], references: [id])
+
+  @@index([subjectId])
+  @@index([constraintType])
+  @@map("subject_constraints")
+}
+
+/// Schedule run record (history for future algorithm phases).
+model ScheduleRun {
+  id              String   @id @default(cuid())
+  name            String?
+  algorithmName   String   @default("pending")
+  status          String   @default("draft") // "draft" | "running" | "completed" | "failed" | "published"
+  datasetVersion  String?
+  parameters      Json?
+  result          Json?
+  errorMessage    String?
+  qualityScore    Float?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  publishedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("schedule_runs")
+}
+

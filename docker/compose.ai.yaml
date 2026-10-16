@@ -1,0 +1,12 @@
+# Docker Compose - AI Services (optional)
+#
+# Usage:
+#   docker compose -f docker/compose.dev.yaml -f docker/compose.ai.yaml up -d
+#
+# Add AI-specific services here when genuinely needed.
+# Examples: local embedding service, vector DB, etc.
+#
+# DO NOT add services that are only cloud APIs (OpenAI, Anthropic).
+# Those are configured via environment variables, not containers.
+
+services: {}

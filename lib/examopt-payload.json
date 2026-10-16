@@ -1,0 +1,167 @@
+{
+  "system": "ExamOpt: Intelligent Examination Timetable Optimization System",
+  "problem_statement": "Problem C10 (GLA HackVision 2.0)",
+  "context": "GLA University, Mathura (CSED Block AB-XI, BCA / BCA-DS / MCA Programs)",
+  "timestamp": "2026-10-16T11:30:00+05:30",
+  "data_summary": {
+    "active_preset": "normal",
+    "counts": {
+      "rooms": 15,
+      "timeslots": 10,
+      "faculty": 20,
+      "subjects": 24,
+      "student_groups": 8,
+      "student_enrollments": 355,
+      "student_subject_enrollments": 1735,
+      "backlog_students": 70
+    },
+    "campus_capacity": {
+      "total_theory_seats": 1040,
+      "total_lab_seats": 440,
+      "total_rooms": 15
+    }
+  },
+  "normal_validation_report": {
+    "dataset": "normal_gla_dataset",
+    "status": "READY_FOR_OPTIMIZATION",
+    "is_valid": true,
+    "readiness_score": 100,
+    "summary": {
+      "total_errors": 0,
+      "total_warnings": 0,
+      "table_counts": {
+        "rooms": 15,
+        "timeslots": 10,
+        "faculty": 20,
+        "subjects": 24,
+        "student_groups": 8,
+        "student_enrollments": 355
+      }
+    },
+    "errors": [],
+    "warnings": [],
+    "diagnostics": [
+      "ExamOpt Scope: 24 examinations across 10 time slots and 15 physical rooms.",
+      "Room-slot capacity matrix is sufficient to host all course examinations."
+    ]
+  },
+  "algorithm_benchmark_comparison": [
+    {
+      "algorithm": "FIRST_FIT",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "room_utilization_pct": 86.75,
+      "unused_capacity_seats": 265,
+      "execution_time_ms": 0.32,
+      "soft_score": 76.70
+    },
+    {
+      "algorithm": "WELSH_POWELL",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "room_utilization_pct": 87.63,
+      "unused_capacity_seats": 245,
+      "execution_time_ms": 0.34,
+      "soft_score": 77.05
+    },
+    {
+      "algorithm": "BACKTRACKING",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "room_utilization_pct": 87.19,
+      "unused_capacity_seats": 255,
+      "execution_time_ms": 0.41,
+      "soft_score": 76.88
+    }
+  ],
+  "edge_case_validation_results": {
+    "edge_case_lab_bottleneck": {
+      "status": "VALIDATION_FAILED",
+      "is_valid": false,
+      "readiness_score": 0,
+      "detected_error": "LAB_BOTTLENECK",
+      "message": "Lab Bottleneck in slot 'D1-M': 6 lab examinations are locked to slot 'D1-M', but campus only has 5 specialized labs."
+    },
+    "edge_case_capacity_overflow": {
+      "status": "VALIDATION_FAILED",
+      "is_valid": false,
+      "readiness_score": 0,
+      "detected_error": "CAPACITY_OVERFLOW",
+      "message": "Subject 'BCA-101' enrollment (650) exceeds the capacity of the largest Theory room (150). Requires room splitting or reallocation."
+    },
+    "invalid_corrupted_input": {
+      "status": "VALIDATION_FAILED",
+      "is_valid": false,
+      "readiness_score": 0,
+      "detected_errors_count": 6,
+      "error_codes": [
+        "DUPLICATE_SUBJECT_ID",
+        "NEGATIVE_ENROLLMENT",
+        "CONTRADICTORY_CONSTRAINTS",
+        "FOREIGN_KEY_NOT_FOUND",
+        "MISSING_NAME",
+        "INVALID_PROGRAM"
+      ]
+    }
+  },
+  "sample_student_lookup": {
+    "roll_no": "GLA26-BCA-0001",
+    "student_name": "Aarav Sharma",
+    "group_id": "GRP-BCA-S1",
+    "enrolled_exams_count": 4,
+    "schedule": [
+      {
+        "subject_id": "BCA-101",
+        "subject_name": "Mathematical Foundation of Computer Science",
+        "exam_date": "2026-10-19",
+        "session": "MORNING",
+        "time_range": "09:30 AM - 12:30 PM",
+        "slot_id": "D1-M",
+        "room_id": "AB11-101",
+        "room_name": "CSED Block AB-XI Room 101"
+      },
+      {
+        "subject_id": "BCA-102",
+        "subject_name": "Problem Solving with C Programming",
+        "exam_date": "2026-10-19",
+        "session": "EVENING",
+        "time_range": "02:00 PM - 05:00 PM",
+        "slot_id": "D1-E",
+        "room_id": "AB11-101",
+        "room_name": "CSED Block AB-XI Room 101"
+      },
+      {
+        "subject_id": "BCA-103",
+        "subject_name": "Digital Logic and Computer Organization",
+        "exam_date": "2026-10-20",
+        "session": "MORNING",
+        "time_range": "09:30 AM - 12:30 PM",
+        "slot_id": "D2-M",
+        "room_id": "AB11-101",
+        "room_name": "CSED Block AB-XI Room 101"
+      },
+      {
+        "subject_id": "BCA-104P",
+        "subject_name": "C Programming Laboratory",
+        "exam_date": "2026-10-20",
+        "session": "EVENING",
+        "time_range": "02:00 PM - 05:00 PM",
+        "slot_id": "D2-E",
+        "room_id": "AB11-LAB1",
+        "room_name": "CSED Block AB-XI Central Computing Lab"
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+# Docker Compose - Base (extended by compose.dev.yaml)
+#
+# This file defines the base services.
+# For development, use compose.dev.yaml directly.
+
+services: {}
