@@ -1,0 +1,155 @@
+{
+  "audit_meta": {
+    "project": "ExamOpt: Intelligent Examination Timetable Optimization System",
+    "hackathon": "GLA University HackVision 2.0",
+    "problem_code": "C10",
+    "timestamp": "2026-10-16T11:07:05.889030+00:00",
+    "target_system": {
+      "os": "Windows 11 / PowerShell",
+      "backend": "FastAPI 0.115+ Python 3.15",
+      "database_mode": "SQLite / Supabase Postgres Dual-Adapter",
+      "frontend": "React 19 + TypeScript + Vite",
+      "mobile": "Flutter 3.x Android Client"
+    }
+  },
+  "dataset_summary": {
+    "subjects_count": 24,
+    "rooms_count": 15,
+    "timeslots_count": 10,
+    "faculty_count": 20,
+    "student_groups_count": 8,
+    "student_enrollments_count": 355
+  },
+  "data_readiness": {
+    "is_valid": true,
+    "readiness_score": 100,
+    "total_errors": 0,
+    "total_warnings": 0
+  },
+  "algorithms_benchmark": {
+    "FIRST_FIT": {
+      "algorithm": "FIRST_FIT",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "total_exams": 24,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "total_available_slots": 10,
+      "room_utilization_pct": 86.75,
+      "unused_capacity_seats": 265,
+      "execution_time_ms": 2.23,
+      "soft_score": 76.7,
+      "independent_validation": {
+        "is_valid": true,
+        "violations_count": 0,
+        "violations_by_constraint": {
+          "STUDENT_CLASH": 0,
+          "ROOM_COLLISION": 0,
+          "CAPACITY_OVERFLOW": 0,
+          "ROOM_SPECIALIZATION": 0,
+          "FIXED_SLOT_VIOLATION": 0,
+          "UNAVAILABLE_PERIOD": 0,
+          "DURATION_BOUNDARY": 0,
+          "FACULTY_DOUBLE_BOOKING": 0
+        }
+      }
+    },
+    "WELSH_POWELL": {
+      "algorithm": "WELSH_POWELL",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "total_exams": 24,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "total_available_slots": 10,
+      "room_utilization_pct": 87.63,
+      "unused_capacity_seats": 245,
+      "execution_time_ms": 0.52,
+      "soft_score": 77.05,
+      "independent_validation": {
+        "is_valid": true,
+        "violations_count": 0,
+        "violations_by_constraint": {
+          "STUDENT_CLASH": 0,
+          "ROOM_COLLISION": 0,
+          "CAPACITY_OVERFLOW": 0,
+          "ROOM_SPECIALIZATION": 0,
+          "FIXED_SLOT_VIOLATION": 0,
+          "UNAVAILABLE_PERIOD": 0,
+          "DURATION_BOUNDARY": 0,
+          "FACULTY_DOUBLE_BOOKING": 0
+        }
+      }
+    },
+    "BACKTRACKING": {
+      "algorithm": "BACKTRACKING",
+      "status": "FEASIBLE",
+      "is_feasible": true,
+      "total_exams": 24,
+      "scheduled_exams": 24,
+      "unscheduled_exams": 0,
+      "hard_conflicts": 0,
+      "slots_used": 6,
+      "total_available_slots": 10,
+      "room_utilization_pct": 87.19,
+      "unused_capacity_seats": 255,
+      "execution_time_ms": 0.3,
+      "soft_score": 76.88,
+      "independent_validation": {
+        "is_valid": true,
+        "violations_count": 0,
+        "violations_by_constraint": {
+          "STUDENT_CLASH": 0,
+          "ROOM_COLLISION": 0,
+          "CAPACITY_OVERFLOW": 0,
+          "ROOM_SPECIALIZATION": 0,
+          "FIXED_SLOT_VIOLATION": 0,
+          "UNAVAILABLE_PERIOD": 0,
+          "DURATION_BOUNDARY": 0,
+          "FACULTY_DOUBLE_BOOKING": 0
+        }
+      }
+    }
+  },
+  "best_algorithm": "WELSH_POWELL",
+  "metrics_definition": {
+    "room_utilization_pct": {
+      "formula": "(total_assigned_students / total_allocated_room_capacity) * 100",
+      "denominator": "Total capacity of rooms hosting scheduled examinations (sum of room capacities)",
+      "numerator": "Total student attendees scheduled across all examinations"
+    },
+    "slot_efficiency_pct": {
+      "formula": "max(0, 1.0 - (slots_used / total_available_slots)) * 100",
+      "denominator": "Total defined timeslots in examination period",
+      "numerator": "Unused examination slots remaining free for institutional operations"
+    },
+    "soft_score": {
+      "formula": "0.40 * min(100, room_utilization_pct) + 0.30 * slot_efficiency_pct + 30.0 (completeness bonus)",
+      "range": "0.0 to 100.0"
+    }
+  },
+  "test_suites_summary": {
+    "backend_pytest": {
+      "total_collected": 47,
+      "passed": 47,
+      "failed": 0,
+      "execution_time_sec": 0.75
+    },
+    "mobile_flutter_test": {
+      "total_collected": 13,
+      "passed": 13,
+      "failed": 0,
+      "execution_time_sec": 1.2
+    },
+    "frontend_build_tsc": {
+      "status": "PASS",
+      "exit_code": 0,
+      "build_time_sec": 0.62,
+      "dist_modules_transformed": 1921
+    }
+  }
+}
