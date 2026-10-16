@@ -17,6 +17,7 @@ export async function fetchAllRows<T>(table: string, select: string, order: stri
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const result = await querySupabase<T[]>(table, { useServiceRole: true, query: { ...filters, select, order, limit: String(PAGE_SIZE), offset: String(offset) } });
     if (result.error || !result.data) {
+      console.error(`[scheduling] Could not read ${table} from Supabase:`, result.error);
       throw new SchedulingServiceError("DATA_SOURCE_UNAVAILABLE", `Could not read ${table} from the database.`, 503);
     }
     rows.push(...result.data);
@@ -61,7 +62,10 @@ export async function loadStudent(rollNo: string): Promise<StudentRecord | null>
   const student = await querySupabase<{ roll_no: string; student_name: string; group_id: string; has_backlog: boolean }[]>("student_enrollments", {
     useServiceRole: true, query: { select: "roll_no,student_name,group_id,has_backlog", roll_no: `eq.${rollNo}`, limit: "1" },
   });
-  if (student.error) throw new SchedulingServiceError("DATA_SOURCE_UNAVAILABLE", "Could not read the student record.", 503);
+  if (student.error) {
+    console.error("[scheduling] Could not read a student record from Supabase:", student.error);
+    throw new SchedulingServiceError("DATA_SOURCE_UNAVAILABLE", "Could not read the student record.", 503);
+  }
   const row = student.data?.[0];
   if (!row) return null;
   const [subjects, group] = await Promise.all([
@@ -73,4 +77,17 @@ export async function loadStudent(rollNo: string): Promise<StudentRecord | null>
     rollNo: row.roll_no, name: row.student_name, groupId: row.group_id, groupName: g?.name ?? null, program: g?.program ?? null, semester: g?.semester ?? null,
     hasBacklog: Boolean(row.has_backlog), subjectIds: subjects.map((s) => s.subject_id),
   };
+}
+
+/** Reads the optional email column only for the self-link flow, after its migration is applied. */
+export async function loadStudentForSelfLink(rollNo: string): Promise<{ rollNo: string; name: string; studentEmail: string | null } | null> {
+  const result = await querySupabase<{ roll_no: string; student_name: string; student_email: string | null }[]>("student_enrollments", {
+    useServiceRole: true, query: { select: "roll_no,student_name,student_email", roll_no: `eq.${rollNo}`, limit: "1" },
+  });
+  if (result.error) {
+    console.error("[scheduling] Could not read the student email for self-linking from Supabase:", result.error);
+    throw new SchedulingServiceError("DATA_SOURCE_UNAVAILABLE", "Could not verify the student record. Ensure the student-email migration has been applied.", 503);
+  }
+  const row = result.data?.[0];
+  return row ? { rollNo: row.roll_no, name: row.student_name, studentEmail: row.student_email?.trim().toLowerCase() || null } : null;
 }

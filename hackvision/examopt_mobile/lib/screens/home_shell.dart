@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../core/models.dart';
 import '../state/app_session.dart';
+import '../theme/app_theme.dart';
 import '../widgets/state_views.dart';
 import 'faculty_duties_screen.dart';
 import 'profile_screen.dart';
@@ -33,14 +34,18 @@ class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
   _Load<StudentTimetable> _student = const _Load();
   _Load<FacultyDuties> _faculty = const _Load();
-  bool _started = false;
+  String? _loadedIdentity;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_started) {
-      _started = true;
-      _refresh();
+    final access = SessionScope.of(context).access;
+    final identity = '${access?.rollNo ?? ''}:${access?.facultyId ?? ''}';
+    if (_loadedIdentity != identity) {
+      _loadedIdentity = identity;
+      if (access?.isLinkedStudent == true || access?.isLinkedFaculty == true) {
+        _refresh();
+      }
     }
   }
 
@@ -102,6 +107,9 @@ class _HomeShellState extends State<HomeShell> {
     final now = (widget.clock ?? DateTime.now)();
 
     if (!access.isLinkedStudent && !access.isLinkedFaculty) {
+      if (!access.isAdmin) {
+        return const _LinkStudentView();
+      }
       return Scaffold(
         body: SafeArea(
           child: MessageView(
@@ -183,6 +191,117 @@ class _HomeShellState extends State<HomeShell> {
           for (final t in tabs)
             NavigationDestination(icon: Icon(t.icon), label: t.label),
         ],
+      ),
+    );
+  }
+}
+
+class _LinkStudentView extends StatefulWidget {
+  const _LinkStudentView();
+
+  @override
+  State<_LinkStudentView> createState() => _LinkStudentViewState();
+}
+
+class _LinkStudentViewState extends State<_LinkStudentView> {
+  final _rollNo = TextEditingController();
+
+  @override
+  void dispose() {
+    _rollNo.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = SessionScope.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Student account'),
+        actions: [
+          TextButton(
+            onPressed: session.busy ? null : session.signOut,
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Icon(
+                    Icons.school_outlined,
+                    size: 48,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Link your student record',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Enter your roll number. To protect your timetable, it must match the institutional email verified on your ExamOpt account.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _rollNo,
+                    textCapitalization: TextCapitalization.characters,
+                    textInputAction: TextInputAction.done,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) =>
+                        session.linkStudent(_rollNo.text.trim()),
+                    decoration: const InputDecoration(
+                      labelText: 'Student roll number',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  if (session.error != null) ...[
+                    const SizedBox(height: 12),
+                    MessageView(
+                      icon: Icons.error_outline_rounded,
+                      tone: MessageTone.warning,
+                      title: 'Could not link account',
+                      message: session.error!,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: session.busy
+                        ? null
+                        : () {
+                            final rollNo = _rollNo.text.trim();
+                            if (rollNo.isNotEmpty) {
+                              session.linkStudent(rollNo);
+                            }
+                          },
+                    child: session.busy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Continue to my timetable'),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'If your record is not set up with your institutional email yet, contact the examination office.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

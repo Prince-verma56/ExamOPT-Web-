@@ -23,8 +23,9 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
-  // 3. If unauthenticated and attempting to visit admin, redirect cleanly to /sign-in
-  if (!userId && pathname.startsWith("/admin")) {
+  // 3. If unauthenticated and attempting to visit admin, redirect cleanly to /sign-in (unless demo mode is permitted)
+  const isDemoAllowed = process.env.FEATURE_DEMO_MODE === "true" && process.env.NODE_ENV !== "production";
+  if (!userId && !isDemoAllowed && pathname.startsWith("/admin")) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 });

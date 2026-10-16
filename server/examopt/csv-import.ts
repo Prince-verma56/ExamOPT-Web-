@@ -110,6 +110,7 @@ export const ENTITY_SPECS: Record<ImportEntity, EntitySpec> = {
     fields: [
       { name: "roll_no", kind: "id", required: true, description: "Unique roll number.", example: "GLA26-BCA-0999" },
       { name: "student_name", kind: "text", required: true, description: "Student name.", example: "Test Student" },
+      { name: "student_email", kind: "text", description: "Verified institutional email used to securely link a student's account.", example: "student@university.edu" },
       { name: "group_id", kind: "ref", ref: "groups", required: true, description: "Existing student group.", example: "GRP-BCA-S1" },
       { name: "has_backlog", fallback: false, kind: "bool", description: "true when the student sits exams outside their cohort.", example: "false" },
       { name: "subject_ids", kind: "idList", ref: "subjects", required: true, description: "Existing subjects the student sits, separated by |. Added to existing enrollments, never removed.", example: "BCA-101|BCA-102" },
@@ -327,6 +328,22 @@ export function planImport(entity: ImportEntity, mode: ImportMode, csv: string, 
           if (!pool.has(v)) fail(f.name, f.ref === "groups" ? "UNKNOWN_GROUP" : "UNKNOWN_SLOT", `${f.name} "${raw}" does not exist.`);
           values[f.name] = v; break;
         }
+      }
+
+      if (entity === "students" && values.student_email) {
+        const email = String(values.student_email).trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          fail("student_email", "INVALID_EMAIL", "student_email must be a valid email address.");
+        }
+        values.student_email = email;
+        const duplicate = ctx.existing.find((r) =>
+          str(r.student_email).toLowerCase() === email && str(r.roll_no).toUpperCase() !== key
+        );
+        if (duplicate) fail("student_email", "DUPLICATE_STUDENT_EMAIL", "This email is already assigned to another student record.");
+        const earlier = parsed.records.find((r) =>
+          r.line < line && str(r.row.student_email).toLowerCase() === email
+        );
+        if (earlier) fail("student_email", "DUPLICATE_STUDENT_EMAIL", "This email appears on another student row in this file.");
       }
     }
 

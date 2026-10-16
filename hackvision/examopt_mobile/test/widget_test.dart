@@ -244,6 +244,15 @@ class Backend {
       );
     }
     if (request.url.path == '/api/v1/access') return envelope(access);
+    if (request.url.path == '/api/v1/student/me/link' &&
+        request.method == 'POST') {
+      final input = jsonDecode(request.body) as Map<String, dynamic>;
+      final identity = Map<String, dynamic>.from(
+        access['identity'] as Map<String, dynamic>,
+      )..['rollNo'] = input['rollNo'];
+      access = {...access, 'identity': identity, 'isLinked': true};
+      return envelope({'rollNo': input['rollNo'], 'name': 'Akash Singh'});
+    }
     if (request.url.path == '/api/v1/timetable/student') {
       if (timetableOverride != null) return timetableOverride!;
       if ((access['identity'] as Map)['rollNo'] == null) {
@@ -438,13 +447,34 @@ void main() {
       );
       await pumpApp(tester, backend);
       await signIn(tester);
-      expect(find.text('Account not linked'), findsOneWidget);
+      expect(find.text('Link your student record'), findsOneWidget);
       expect(
         backend.requests.where(
           (r) => r.url.path == '/api/v1/timetable/student',
         ),
         isEmpty,
       );
+      await tester.enterText(find.byType(TextField), 'GLA26-BCA-0001');
+      await tester.ensureVisible(find.text('Continue to my timetable'));
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNotNull,
+      );
+      await tester.tap(find.text('Continue to my timetable'));
+      await tester.pumpAndSettle();
+      expect(
+        backend.requests.where(
+          (r) => r.url.path == '/api/v1/student/me/link' && r.method == 'POST',
+        ),
+        hasLength(1),
+      );
+      expect(
+        backend.requests.where(
+          (r) => r.url.path == '/api/v1/timetable/student',
+        ),
+        hasLength(1),
+      );
+      expect(find.text('Akash Singh'), findsOneWidget);
     },
   );
 

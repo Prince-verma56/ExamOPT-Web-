@@ -117,6 +117,7 @@ CREATE TABLE student_groups (
 CREATE TABLE student_enrollments (
     roll_no VARCHAR(50) PRIMARY KEY,
     student_name VARCHAR(255) NOT NULL,
+    student_email TEXT,
     group_id VARCHAR(50) NOT NULL REFERENCES student_groups(group_id) ON DELETE RESTRICT,
     enrolled_subject_ids TEXT NOT NULL, -- Comma-separated subject IDs
     has_backlog BOOLEAN NOT NULL DEFAULT FALSE,

@@ -15,6 +15,7 @@ export interface ApiContext {
   /** Student/faculty linkage from Clerk publicMetadata, read server-side. Empty for anonymous and demo sessions. */
   identity: LinkedIdentity;
   email: string | null;
+  emailVerified: boolean;
   /** Whether Clerk's backend profile was available for this request. */
   profileAvailable: boolean;
 }
@@ -50,22 +51,27 @@ export function isClerkConfigured() {
   return Boolean(key && (key.startsWith('pk_test_') || key.startsWith('pk_live_')));
 }
 
-type ClerkProfile = { email: string | null; role: unknown; identity: LinkedIdentity; available: boolean; expires: number };
+type ClerkProfile = { email: string | null; emailVerified: boolean; role: unknown; identity: LinkedIdentity; available: boolean; expires: number };
 const profileCache = new Map<string, ClerkProfile>();
 const NO_IDENTITY: LinkedIdentity = { rollNo: null, facultyId: null };
+
+export function invalidateClerkProfileCache(userId: string) {
+  profileCache.delete(userId);
+}
 
 async function clerkProfile(userId: string): Promise<ClerkProfile> {
   const cached = profileCache.get(userId);
   if (cached && cached.expires > Date.now()) return cached;
   try {
     const user = await (await clerkClient()).users.getUser(userId);
-    const email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
+    const verifiedEmail = user.emailAddresses.find((address) => address.verification?.status === 'verified');
+    const email = verifiedEmail?.emailAddress ?? null;
     const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
-    const profile = { email, role: metadata.role, identity: identityFromMetadata(metadata), available: true, expires: Date.now() + 60_000 };
+    const profile = { email, emailVerified: email !== null, role: metadata.role, identity: identityFromMetadata(metadata), available: true, expires: Date.now() + 60_000 };
     profileCache.set(userId, profile);
     return profile;
   } catch {
-    return { email: null, role: undefined, identity: NO_IDENTITY, available: false, expires: 0 };
+    return { email: null, emailVerified: false, role: undefined, identity: NO_IDENTITY, available: false, expires: 0 };
   }
 }
 
@@ -94,6 +100,7 @@ async function resolveAccess(userId: string | null) {
     ...access,
     identity,
     email: profile?.email ?? null,
+    emailVerified: profile?.emailVerified ?? false,
     profileAvailable: profile?.available ?? false,
   };
 }
@@ -135,7 +142,7 @@ export async function createApiRoute<TReq, TRes>(
 
     const resolved = await resolveAccess(userId);
     ({ role, permissions } = resolved);
-    const { identity, email, profileAvailable } = resolved;
+    const { identity, email, emailVerified, profileAvailable } = resolved;
 
     if (options.requireAuth && !userId) {
       return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
@@ -192,6 +199,7 @@ export async function createApiRoute<TReq, TRes>(
       requestId,
       identity,
       email,
+      emailVerified,
       profileAvailable,
     };
 

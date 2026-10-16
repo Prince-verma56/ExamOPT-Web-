@@ -42,6 +42,8 @@ export function StudentTimetableView() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [roll, setRoll] = useState("");
   const [callerRole, setCallerRole] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const load = useCallback(async (rollNo?: string) => {
     setState({ kind: "loading" });
@@ -83,6 +85,21 @@ export function StudentTimetableView() {
 
   const isAdmin = callerRole === "admin";
   const showAdminLookup = isAdmin || state.kind === "needs-roll" || (state.kind === "ready" && roll);
+  const linkStudent = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!roll.trim() || linking) return;
+    setLinking(true);
+    setLinkError(null);
+    try {
+      await api<{ rollNo: string }>("/student/me/link", { json: { rollNo: roll.trim() } });
+      setRoll("");
+      await load();
+    } catch (error) {
+      setLinkError(error instanceof Error ? error.message : "Could not link the student record.");
+    } finally {
+      setLinking(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
@@ -147,16 +164,47 @@ export function StudentTimetableView() {
             <div className="space-y-2">
               <h2 className="text-base font-semibold text-foreground">Student Account Linking Required</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Your Clerk account is authenticated, but it has not been linked to an existing synthetic student record in the university examination database yet.
+                Enter your roll number to link this account. For your privacy, the signed-in email must match the verified institutional email on your student record.
               </p>
-              <div className="mt-3 rounded-lg border bg-background/80 p-4 text-xs space-y-2">
-                <p className="font-semibold text-foreground">How to link this testing account:</p>
-                <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
-                  <li>Ask an administrator (<code className="font-mono text-primary font-semibold">pvcodingz96@gmail.com</code>) to link your email in the Admin Data Workspace.</li>
-                  <li>Or configure <code className="font-mono bg-muted px-1 py-0.5 rounded">EXAMOPT_STUDENT_EMAIL_MAPPINGS</code> in the server environment.</li>
-                </ul>
-              </div>
+              <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={linkStudent}>
+                <Input
+                  value={roll}
+                  onChange={(e) => setRoll(e.target.value.toUpperCase())}
+                  placeholder="Student roll number"
+                  aria-label="Student roll number to link"
+                  maxLength={40}
+                  required
+                />
+                <Button type="submit" disabled={linking || !roll.trim()}>
+                  {linking ? "Linking..." : "Link my account"}
+                </Button>
+              </form>
+              {linkError && <p role="alert" className="mt-2 text-sm text-destructive">{linkError}</p>}
+              <p className="mt-2 text-xs text-muted-foreground">
+                If your institutional email is not on your student record yet, ask the examination office to update it.
+              </p>
               <div className="pt-2 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={linking}
+                  onClick={async () => {
+                    setRoll("GLA26-BCA-0001");
+                    setLinking(true);
+                    setLinkError(null);
+                    try {
+                      await api<{ rollNo: string }>("/student/me/link", { json: { rollNo: "GLA26-BCA-0001" } });
+                      await load();
+                    } catch {
+                      await load("GLA26-BCA-0001");
+                    } finally {
+                      setLinking(false);
+                    }
+                  }}
+                >
+                  ⚡ Quick Demo: Link as Akash Singh (GLA26-BCA-0001)
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => void load()}>
                   Re-check Link Status
                 </Button>

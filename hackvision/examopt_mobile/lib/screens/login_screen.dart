@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'For your security, signing in on a new device needs the code we sent to ${session.codeDestination ?? 'your email address'}.',
+                        'For your security, signing in on a new device needs the code we sent to ${session.codeDestination ?? 'your email address'}.\n\n💡 Demo accounts use code: 424242',
                         style: textTheme.bodySmall?.copyWith(height: 1.45),
                       ),
                       const SizedBox(height: 14),
@@ -145,6 +145,38 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text('Use a different account'),
                       ),
                     ] else ...[
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ActionChip(
+                            avatar: const Icon(Icons.school, size: 16),
+                            label: const Text('Demo Student', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              _email.text = 'student+clerk_test@example.com';
+                              _password.text = 'Student@123456!';
+                            },
+                          ),
+                          ActionChip(
+                            avatar: const Icon(Icons.person, size: 16),
+                            label: const Text('Demo Faculty', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              _email.text = 'faculty+clerk_test@example.com';
+                              _password.text = 'Faculty@123456!';
+                            },
+                          ),
+                          ActionChip(
+                            avatar: const Icon(Icons.admin_panel_settings, size: 16),
+                            label: const Text('Admin', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              _email.text = 'pvcodingz96@gmail.com';
+                              _password.text = 'ExamOpt@2026Secure!';
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
                       TextField(
                         controller: _email,
                         keyboardType: TextInputType.emailAddress,

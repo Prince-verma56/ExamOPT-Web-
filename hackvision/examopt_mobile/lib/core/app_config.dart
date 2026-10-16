@@ -11,9 +11,13 @@ class AppConfig {
 
   static const String defaultApiBaseUrl = 'https://exam-opt-web.vercel.app';
   static const String _apiBaseUrl = String.fromEnvironment('API_BASE_URL');
-  static const String clerkPublishableKey = String.fromEnvironment(
+  static const String defaultClerkPublishableKey =
+      'pk_test_d2VsY29tZS1ld2UtMzM0OC5jbGVyay5hY2NvdW50cy5kZXYk';
+  static const String _clerkPublishableKey = String.fromEnvironment(
     'CLERK_PUBLISHABLE_KEY',
   );
+  static String get clerkPublishableKey =>
+      _clerkPublishableKey.isNotEmpty ? _clerkPublishableKey : defaultClerkPublishableKey;
 
   /// True in release builds (`flutter build apk --release`).
   static const bool isRelease = bool.fromEnvironment('dart.vm.product');

@@ -81,6 +81,51 @@ class ApiClient {
     return (body['data'] as Map<String, dynamic>?) ?? const {};
   }
 
+  Future<void> linkStudent(String rollNo) async {
+    final token = await tokenProvider();
+    final http.Response response;
+    try {
+      response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/student/me/link'),
+            headers: {
+              'Authorization': '******',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            }..addAll({'Authorization': 'Bearer $token'}),
+            body: jsonEncode({'rollNo': rollNo}),
+          )
+          .timeout(_timeout);
+    } on TimeoutException {
+      throw ApiException(
+        0,
+        'TIMEOUT',
+        'The ExamOpt server did not answer in time. Check your connection and retry.',
+      );
+    } catch (_) {
+      throw ApiException(
+        0,
+        'NETWORK_ERROR',
+        'Cannot reach the ExamOpt server at $baseUrl. Check your connection and retry.',
+      );
+    }
+    Map<String, dynamic>? body;
+    try {
+      body = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      body = null;
+    }
+    if (response.statusCode >= 400 || body == null || body['success'] != true) {
+      final error = body?['error'] as Map<String, dynamic>?;
+      throw ApiException(
+        response.statusCode,
+        error?['code']?.toString() ?? 'HTTP_${response.statusCode}',
+        error?['message']?.toString() ??
+            'The request failed (${response.statusCode}).',
+      );
+    }
+  }
+
   Future<AccessSummary> access() async =>
       AccessSummary.fromJson(await _get('/access'));
 

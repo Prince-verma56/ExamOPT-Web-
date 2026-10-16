@@ -120,6 +120,26 @@ class AppSession extends ChangeNotifier {
     }
   }
 
+  Future<void> linkStudent(String rollNo) async {
+    final api = _api;
+    if (api == null) return;
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await api.linkStudent(rollNo);
+      _access = await api.access();
+    } on ApiException catch (e) {
+      _error = e.message;
+      if (e.isUnauthorized) {
+        await expire(e.message);
+      }
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     _awaitingEmailCode = false;
     await _auth?.signOut();

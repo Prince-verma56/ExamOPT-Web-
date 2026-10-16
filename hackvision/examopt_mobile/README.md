@@ -36,6 +36,17 @@ app; provide it at build/run time with
 `--dart-define=CLERK_PUBLISHABLE_KEY=pk_...`. Never use a Clerk secret key in
 the mobile app.
 
+### Student account linking
+
+After signing in, an unlinked student can enter their roll number in the app.
+The server links it only when the account's verified Clerk email matches the
+institutional email on that student's roster record. Before enabling this
+flow in an environment, apply
+`supabase/migrations/20261017000000_add_student_email_for_self_link.sql` and
+populate the `student_email` column with verified addresses through the
+student roster CSV import. Existing timetable and scheduling reads do not
+depend on this optional column.
+
 ### 1. Run on Chrome (Web)
 ```powershell
 cd examopt_mobile
@@ -54,7 +65,7 @@ cd examopt_mobile
 flutter run -d <device-id> --dart-define=CLERK_PUBLISHABLE_KEY=pk_...
 ```
 
-### 4. Run Automated Widget Tests (13/13 Passing)
+### 4. Run Automated Widget Tests
 ```powershell
 cd examopt_mobile
 flutter test
