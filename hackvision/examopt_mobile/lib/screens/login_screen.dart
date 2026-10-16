@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../state/app_session.dart';
 import '../theme/app_theme.dart';
@@ -168,10 +169,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           ActionChip(
                             avatar: const Icon(Icons.admin_panel_settings, size: 16),
-                            label: const Text('Admin', style: TextStyle(fontSize: 12)),
+                            label: const Text('Admin (Demo)', style: TextStyle(fontSize: 12)),
                             onPressed: () {
-                              _email.text = 'pvcodingz96@gmail.com';
-                              _password.text = 'ExamOpt@2026Secure!';
+                              _email.text = 'admin+clerk_test@example.com';
+                              _password.text = 'ExamOptAdmin#2026!';
                             },
                           ),
                         ],

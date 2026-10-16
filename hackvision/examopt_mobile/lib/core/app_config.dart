@@ -60,8 +60,8 @@ class AppConfig {
     if (apiBaseUrl.isEmpty) {
       return 'This build has no API_BASE_URL. Rebuild with --dart-define=API_BASE_URL=https://your-server.';
     }
-    if (isRelease && !apiBaseUrl.startsWith('https://')) {
-      return 'Release builds must use an HTTPS API_BASE_URL.';
+    if (isRelease && !apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      return 'API_BASE_URL must begin with http:// or https://';
     }
     if (clerkPublishableKey.isEmpty) {
       return 'This build has no CLERK_PUBLISHABLE_KEY. Rebuild with --dart-define=CLERK_PUBLISHABLE_KEY=pk_...';

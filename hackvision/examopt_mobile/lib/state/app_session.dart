@@ -18,22 +18,34 @@ class AppSession extends ChangeNotifier {
            (AppConfig.configurationError == null
                ? ClerkAuth(frontendApi: AppConfig.clerkFrontendApi!)
                : null),
-       apiBaseUrl = apiBaseUrl ?? AppConfig.apiBaseUrl,
+       _apiBaseUrl = apiBaseUrl ?? AppConfig.apiBaseUrl,
        configurationError = auth != null ? null : AppConfig.configurationError,
-       _apiFactory =
-           apiFactory ??
-           ((tokens) => ApiClient(
-             baseUrl: apiBaseUrl ?? AppConfig.apiBaseUrl,
-             tokenProvider: tokens,
-           ));
+       _customApiFactory = apiFactory;
+
+  String _apiBaseUrl;
 
   /// Where the app sends API requests.
-  final String apiBaseUrl;
+  String get apiBaseUrl => _apiBaseUrl;
+
+  void setApiBaseUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return;
+    _apiBaseUrl = trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    _api = null;
+    notifyListeners();
+  }
 
   /// Why this build cannot sign in (missing or invalid build settings), or null.
   final String? configurationError;
   final ClerkAuth? _auth;
-  final ApiClient Function(Future<String> Function() tokenProvider) _apiFactory;
+  final ApiClient Function(Future<String> Function() tokenProvider)? _customApiFactory;
+
+  ApiClient _createApiClient(Future<String> Function() tokenProvider) {
+    if (_customApiFactory != null) {
+      return _customApiFactory!(tokenProvider);
+    }
+    return ApiClient(baseUrl: _apiBaseUrl, tokenProvider: tokenProvider);
+  }
 
   ApiClient? _api;
   AccessSummary? _access;
@@ -82,7 +94,7 @@ class AppSession extends ChangeNotifier {
       final step = await action(auth);
       _awaitingEmailCode = step == SignInStep.emailCode;
       if (step == SignInStep.complete) {
-        final api = _apiFactory(auth.sessionToken);
+        final api = _createApiClient(auth.sessionToken);
         _access = await api.access();
         _api = api;
       }
