@@ -33,6 +33,7 @@ import {
   Bell,
   Settings,
   Calendar,
+  Presentation,
 } from "lucide-react";
 import { SafeUserButton } from "@/components/auth/safe-auth-button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,7 @@ const navGroups: NavigationGroup[] = [
   {
     label: "Scheduling",
     items: [
+      { title: "Judge Demo", href: "/admin/demo-studio", icon: Presentation, badge: "Demo" },
       { title: "Constraints", href: "/admin/constraints", icon: SlidersHorizontal },
       { title: "Timetable", href: "/admin/schedules", icon: CalendarRange },
       { title: "Optimization Lab", href: "/admin/optimization", icon: Cpu },

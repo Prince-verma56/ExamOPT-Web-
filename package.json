@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "test:e2e": "echo \"E2E tests not yet configured (Playwright).\"",
+    "test:e2e": "playwright test",
     "test:ai": "vitest run tests/ai",
     "rag:test": "vitest run tests/ai/rag.test.ts",
     "voice:test": "echo \"Voice tests pending mock implementation\"",
@@ -83,6 +83,7 @@
   },
   "devDependencies": {
     "@inquirer/prompts": "^8.7.3",
+    "@playwright/test": "^1.55.0",
     "@prisma/client": "^7.10.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",

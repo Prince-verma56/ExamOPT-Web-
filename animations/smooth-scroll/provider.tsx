@@ -9,17 +9,22 @@
  * Wrap your application with <SmoothScrollProvider> in the root layout.
  */
 
-import { useEffect, createContext, useContext, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, createContext, useContext, useMemo, useRef, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import Lenis from '@studio-freight/lenis';
 import { gsap, ScrollTrigger, registerGsapPlugins, prefersReducedMotion } from '../core';
 
 interface SmoothScrollContextValue {
-  lenis: Lenis | null;
+  /**
+   * The live Lenis instance, or null when smooth scrolling is off. Read it at
+   * the moment of use (e.g. in a click handler): the instance is an external
+   * object, so nothing needs to re-render when it is created or destroyed.
+   */
+  getLenis: () => Lenis | null;
 }
 
 const SmoothScrollContext = createContext<SmoothScrollContextValue>({
-  lenis: null,
+  getLenis: () => null,
 });
 
 export function useSmoothScroll(): SmoothScrollContextValue {
@@ -35,7 +40,7 @@ export function SmoothScrollProvider({
   children,
   enabled = true,
 }: SmoothScrollProviderProps) {
-  const [lenis, setLenis] = useState<Lenis | null>(null);
+  const lenisRef = useRef<Lenis | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -43,18 +48,13 @@ export function SmoothScrollProvider({
 
     // Disable smooth scrolling on workspace and student routes for native, instant responsiveness and table scrolling
     const isAppRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/student');
-    if (!enabled || isAppRoute || prefersReducedMotion()) {
-      setLenis(null);
-      return;
-    }
+    if (!enabled || isAppRoute || prefersReducedMotion()) return;
 
     const lenisInstance = new Lenis({
       lerp: 0.1,
       smoothWheel: true,
     });
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLenis(lenisInstance);
+    lenisRef.current = lenisInstance;
 
     // Coordinate Lenis with GSAP ScrollTrigger
     lenisInstance.on('scroll', ScrollTrigger.update);
@@ -71,12 +71,15 @@ export function SmoothScrollProvider({
       gsap.ticker.remove(tick);
       lenisInstance.off('scroll', ScrollTrigger.update);
       lenisInstance.destroy();
-      setLenis(null);
+      if (lenisRef.current === lenisInstance) lenisRef.current = null;
     };
   }, [enabled, pathname]);
 
+  const getLenis = useCallback(() => lenisRef.current, []);
+  const value = useMemo(() => ({ getLenis }), [getLenis]);
+
   return (
-    <SmoothScrollContext value={{ lenis }}>
+    <SmoothScrollContext value={value}>
       {children}
     </SmoothScrollContext>
   );

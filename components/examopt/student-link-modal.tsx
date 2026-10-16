@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link2, Plus, Trash2, CheckCircle2, UserCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,13 +48,15 @@ export function StudentLinkModal({ onLinked }: { onLinked?: () => void }) {
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      void loadLinks();
+  // Refresh the list each time the dialog opens: an event, not an effect on `open`.
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (next) {
       setError(null);
       setSuccess(null);
+      void loadLinks();
     }
-  }, [open]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,12 +101,10 @@ export function StudentLinkModal({ onLinked }: { onLinked?: () => void }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <Link2 className="size-3.5 text-primary" />
-          Link Student Account
-        </Button>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger render={<Button variant="outline" size="sm" className="gap-1.5 text-xs" />}>
+        <Link2 className="size-3.5 text-primary" />
+        Link Student Account
       </DialogTrigger>
       <DialogContent className="max-w-md sm:max-w-lg">
         <DialogHeader>

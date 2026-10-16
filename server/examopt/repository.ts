@@ -303,7 +303,7 @@ export const examOptRepository = {
     const { data } = await query<Row[]>("subjects", { method: "POST", body: {
       subject_id: input.code.toUpperCase(), name: input.name, program: input.program, semester: input.semester,
       duration_hours: input.durationMinutes / 60, requires_lab: input.requiresLab || input.examType === "practical",
-      unavailable_slots: [], enrolled_students: 0,
+      unavailable_slots: "", enrolled_students: 0,
     } });
     return subjectDto(data[0]);
   },

@@ -22,9 +22,11 @@ export async function querySupabase<T>(
     query?: Record<string, string>;
     body?: unknown;
     useServiceRole?: boolean;
+    /** Extra PostgREST preferences, e.g. "resolution=merge-duplicates" for an upsert. */
+    prefer?: string[];
   } = {}
 ): Promise<{ data: T | null; error: Error | null; count?: number }> {
-  const { method = "GET", query = {}, body, useServiceRole = false } = options;
+  const { method = "GET", query = {}, body, useServiceRole = false, prefer = [] } = options;
   const key = useServiceRole ? supabaseConfig.serviceRoleKey : supabaseConfig.anonKey;
 
   if (!key) {
@@ -43,7 +45,7 @@ export async function querySupabase<T>(
         "apikey": key,
         "Authorization": `Bearer ${key}`,
         "Content-Type": "application/json",
-        "Prefer": ["POST", "PATCH", "DELETE"].includes(method) ? "return=representation" : "count=exact",
+        "Prefer": [["POST", "PATCH", "DELETE"].includes(method) ? "return=representation" : "count=exact", ...prefer].join(","),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
       cache: "no-store",

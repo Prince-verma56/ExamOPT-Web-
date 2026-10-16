@@ -7,7 +7,7 @@ import { ArrowUpRight, Download, Loader2, Megaphone, ShieldCheck, ShieldX } from
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { api, downloadCsv, errorMessage } from "./api";
 import { ALGORITHM_LABEL, dateTime } from "./format";
@@ -35,13 +35,16 @@ export function ExportMenu({ runId, className }: { runId?: string; className?: s
         {busy ? <Loader2 className="animate-spin" /> : <Download />}Export CSV
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">{runId ? "This run" : "Published timetable"}</DropdownMenuLabel>
-        {EXPORTS.map((item) => (
-          <DropdownMenuItem key={item.kind} onClick={() => void run(item.kind)} className="flex flex-col items-start gap-0">
-            <span className="font-medium">{item.label}</span>
-            <span className="text-xs text-muted-foreground">{item.hint}</span>
-          </DropdownMenuItem>
-        ))}
+        {/* Base UI requires a group label to sit inside a Menu.Group. */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs text-muted-foreground">{runId ? "This run" : "Published timetable"}</DropdownMenuLabel>
+          {EXPORTS.map((item) => (
+            <DropdownMenuItem key={item.kind} onClick={() => void run(item.kind)} className="flex flex-col items-start gap-0">
+              <span className="font-medium">{item.label}</span>
+              <span className="text-xs text-muted-foreground">{item.hint}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

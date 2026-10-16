@@ -1,0 +1,24 @@
+subject_id,name,program,semester,duration_hours,requires_lab,fixed_slot,unavailable_slots,enrolled_students
+DEMO-ML-301,Machine Learning,BCA-DS,3,3,false,,,0
+DEMO-CN-302,Computer Networks,BCA,3,3,false,,,0
+DEMO-OS-303,Operating Systems Lab,BCA,3,2,true,,,0
+DEMO-SE-304,Software Engineering,BCA,3,3,false,,,0
+DEMO-AI-305,Artificial Intelligence,MCA,1,3,false,D3-M,,0
+DEMO-CV-306,Computer Vision,MCA,1,3,false,D2-M,D1-E,0
+DEMO-IOT-307,Internet of Things,BCA-DS,5,3,false,,D1-M,0
+DEMO-BC-308,Blockchain Fundamentals,BCA-DS,5,3,false,,,0
+DEMO-CC-309,Cloud Computing,BCA-DS,5,3,false,,,0
+DEMO-CY-310,Cyber Security,MCA,3,3,false,,,0
+DEMO-WD-311,Web Development,BCA,1,3,false,,,0
+DEMO-WD-312,Mobile App Development,BCA,1,3,false,,,0
+DEMO-DS-313,Data Science Essentials,BCA-DS,3,3,false,,,0
+DEMO-BIG-401,University Mathematics (Common Paper),BCA,1,3,false,,,0
+DEMO-BIGLAB-402,Common Programming Practical,BCA,1,2,true,,,0
+DEMO-LAB-501,Python Practical,BCA-DS,3,2,true,D2-M,,0
+DEMO-LAB-502,Java Practical,BCA,3,2,true,D2-E,,0
+DEMO-LAB-503,DBMS Practical,BCA-DS,3,2,true,D3-M,,0
+DEMO-LAB-504,Networking Practical,BCA,5,2,true,D3-E,,0
+DEMO-LAB-505,Data Mining Practical,BCA-DS,5,2,true,D4-M,,0
+DEMO-LAB-506,Advanced Java Practical,MCA,1,2,true,D4-E,,0
+DEMO-LAB-507,Cloud Practical,MCA,3,2,true,,,0
+DEMO-LAB-508,AI Practical,MCA,3,2,true,,,0

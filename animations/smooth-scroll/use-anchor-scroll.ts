@@ -13,7 +13,7 @@ const HEADER_OFFSET = -72;
  * Links to other routes are left to the browser / Next.js router.
  */
 export function useAnchorScroll() {
-  const { lenis } = useSmoothScroll();
+  const { getLenis } = useSmoothScroll();
 
   return useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string, delay = 0) => {
@@ -24,6 +24,7 @@ export function useAnchorScroll() {
 
       event.preventDefault();
       window.setTimeout(() => {
+        const lenis = getLenis();
         if (lenis) {
           lenis.scrollTo(target, { offset: HEADER_OFFSET });
         } else if (target === 0) {
@@ -34,6 +35,6 @@ export function useAnchorScroll() {
         history.replaceState(null, '', hash === '#top' ? window.location.pathname : hash);
       }, delay);
     },
-    [lenis]
+    [getLenis]
   );
 }

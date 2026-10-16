@@ -1,4 +1,4 @@
-import type { Enrollment, Exam, Room, RoomType, SchedulingInput, Slot } from "./domain";
+import type { Assignment, Enrollment, Exam, Room, RoomType, SchedulingInput, Slot } from "./domain";
 import { parseClock } from "./normalize";
 
 /**
@@ -46,6 +46,28 @@ export function campusMini(): SchedulingInput {
       ...cohort("MCA1", 60, ["MCA-101", "MCA-102P"]),
     ],
   };
+}
+
+/**
+ * The Test Lab's tampered copy of a valid `campusMini()` schedule, used by the
+ * `independent-validation` case and the Demo Studio's combined scenario.
+ * Returns a new array; the input is not modified.
+ */
+export function tamperCampusMiniSchedule(assignments: Assignment[]): Assignment[] {
+  const tampered = assignments.map((a) => ({ examId: a.examId, slotId: a.slotId, roomId: a.roomId }));
+  const at = (id: string) => {
+    const found = tampered.find((a) => a.examId === id);
+    if (!found) throw new Error(`The campusMini schedule has no assignment for ${id}.`);
+    return found;
+  };
+  // Same slot and room as BCA-101, with which it shares 40 students.
+  at("BCA-102").slotId = at("BCA-101").slotId;
+  at("BCA-102").roomId = at("BCA-101").roomId;
+  // 60 students in a 50-seat laboratory.
+  at("MCA-102P").roomId = "LAB-50";
+  // A second assignment for an exam that is already placed.
+  tampered.push({ examId: "BCA-301", slotId: "D3-E", roomId: "R-120" });
+  return tampered;
 }
 
 /** Five exams whose conflicts form an odd cycle, with only two slots: not 2-colourable, yet no simple bound detects it. */

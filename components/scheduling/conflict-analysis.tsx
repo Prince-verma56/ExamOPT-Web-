@@ -11,43 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api, errorMessage } from "./api";
 import { num } from "./format";
+import { ARC_LABEL_R, ARC_R, CENTER, LABEL_R, polar, PROGRAM_FILL, ringLayout, SIZE } from "./graph-layout";
 import { PageIntro, StatStrip } from "./page-intro";
 import type { schedulingService } from "@/server/scheduling/service";
 
 type GraphData = Awaited<ReturnType<typeof schedulingService.conflictGraph>>;
-type Node = GraphData["nodes"][number];
 type Edge = GraphData["edges"][number];
-
-// Node ring, then radial node labels (~75px), then cohort arcs and their labels outside both.
-const SIZE = 760, CENTER = SIZE / 2, RING = 210, LABEL_R = RING + 20, ARC_R = RING + 102, ARC_LABEL_R = RING + 122;
-const PROGRAM_FILL: Record<string, string> = { BCA: "var(--chart-1)", "BCA-DS": "var(--chart-2)", MCA: "var(--chart-3)" };
-
-/** Deterministic ring layout: cohorts (program + semester) as arcs separated by gaps. */
-function layout(nodes: Node[]) {
-  const cohorts = new Map<string, Node[]>();
-  for (const node of [...nodes].sort((a, b) => a.program.localeCompare(b.program) || a.semester - b.semester || a.id.localeCompare(b.id))) {
-    const key = `${node.program} · S${node.semester}`;
-    cohorts.set(key, [...(cohorts.get(key) ?? []), node]);
-  }
-  const gap = 0.16;
-  const step = (Math.PI * 2 - gap * cohorts.size) / Math.max(1, nodes.length);
-  const positions = new Map<string, { x: number; y: number; angle: number }>();
-  const arcs: { label: string; start: number; end: number }[] = [];
-  let angle = -Math.PI / 2 + gap / 2;
-  for (const [label, members] of cohorts) {
-    const start = angle;
-    for (const node of members) {
-      const a = angle + step / 2;
-      positions.set(node.id, { x: CENTER + RING * Math.cos(a), y: CENTER + RING * Math.sin(a), angle: a });
-      angle += step;
-    }
-    arcs.push({ label, start, end: angle });
-    angle += gap;
-  }
-  return { positions, arcs };
-}
-
-const polar = (r: number, a: number) => ({ x: CENTER + r * Math.cos(a), y: CENTER + r * Math.sin(a) });
 
 export function ConflictAnalysis() {
   const [data, setData] = useState<GraphData | null>(null);
@@ -74,7 +43,7 @@ export function ConflictAnalysis() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const { positions, arcs } = useMemo(() => layout(data?.nodes ?? []), [data]);
+  const { positions, arcs } = useMemo(() => ringLayout(data?.nodes ?? []), [data]);
   const nodeById = useMemo(() => new Map((data?.nodes ?? []).map((n) => [n.id, n])), [data]);
   const neighbours = useMemo(() => {
     const map = new Map<string, Edge[]>();

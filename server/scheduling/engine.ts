@@ -8,6 +8,7 @@ import { allocateInvigilators, validateInvigilation, type InvigilationReport } f
 import { computeMetrics, type ScheduleMetrics } from "./metrics";
 import { buildModel, type SchedulingModel } from "./model";
 import { runPreflight, type PreflightResult } from "./preflight";
+import type { TraceRecorder } from "./trace";
 import { validateSchedule, type ValidationReport } from "./validator";
 
 export interface PreparedDataset {
@@ -89,7 +90,8 @@ export function classifyOutcome(validation: ValidationReport, solved: Pick<Solve
   return { outcome: "PARTIAL", evidence: null };
 }
 
-export function runAlgorithm(dataset: PreparedDataset, algorithmId: AlgorithmId, config: EngineConfig = DEFAULT_CONFIG): RunResult {
+/** `options.trace` records the solver's decisions (Demo Studio). Omitted everywhere else, so normal runs are unchanged. */
+export function runAlgorithm(dataset: PreparedDataset, algorithmId: AlgorithmId, config: EngineConfig = DEFAULT_CONFIG, options: { trace?: TraceRecorder } = {}): RunResult {
   const algorithm = ALGORITHMS[algorithmId];
   const started = new Date();
   const t0 = performance.now();
@@ -114,7 +116,7 @@ export function runAlgorithm(dataset: PreparedDataset, algorithmId: AlgorithmId,
     };
   }
 
-  const solved = algorithm.solve(dataset.model, config);
+  const solved = algorithm.solve(dataset.model, config, options.trace);
   const timing = finish();
   const validation = validateSchedule(dataset.input, solved.assignments);
   const { outcome, evidence } = classifyOutcome(validation, solved);

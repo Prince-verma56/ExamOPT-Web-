@@ -1,6 +1,7 @@
 import { welshPowellOrder } from "./conflict-graph";
 import type { AlgorithmId, Assignment, Diagnostic, EngineConfig } from "./domain";
 import { Occupancy, type SchedulingModel } from "./model";
+import type { TraceEvent, TraceRecorder } from "./trace";
 
 export interface SolverResult {
   assignments: Assignment[];
@@ -21,7 +22,8 @@ export interface AlgorithmDescriptor {
   family: string;
   summary: string;
   complete: boolean;
-  solve(model: SchedulingModel, config: EngineConfig): SolverResult;
+  /** `trace` is optional; when omitted the solver does exactly the same work as an untraced run. */
+  solve(model: SchedulingModel, config: EngineConfig, trace?: TraceRecorder): SolverResult;
 }
 
 function collect(model: SchedulingModel, occupancy: Occupancy) {
@@ -56,54 +58,144 @@ export function explainRejection(model: SchedulingModel, occupancy: Occupancy, e
   };
 }
 
+// Trace helpers. They are only reached through `trace?.emit(...)`, so they never run on an untraced solve.
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** Placed exams that share students with `e` and sit in a slot overlapping `s`. */
+function clashBlockers(model: SchedulingModel, slotOf: ArrayLike<number>, e: number, s: number) {
+  return model.graph.adjacency[e].filter((u) => slotOf[u] !== -1 && model.slotOverlap[s][slotOf[u]]);
+}
+
+function studentClashEvent(model: SchedulingModel, slotOf: ArrayLike<number>, e: number, s: number): Omit<TraceEvent, "seq"> {
+  const blockers = clashBlockers(model, slotOf, e, s);
+  const shared = blockers.reduce((sum, u) => sum + model.graph.shared[e][u], 0);
+  const ids = blockers.map((u) => model.exams[u].id);
+  return {
+    type: "candidate_rejected", examId: model.exams[e].id, slotId: model.slots[s].id, reason: "STUDENT_CLASH", relatedExamIds: ids,
+    message: `${model.exams[e].id} cannot use ${model.slots[s].id}: ${plural(shared, "shared student")} already sit ${ids.join(", ")} in an overlapping slot.`,
+    data: { sharedStudents: shared },
+  };
+}
+
+function noRoomEvent(model: SchedulingModel, e: number, s: number): Omit<TraceEvent, "seq"> {
+  const exam = model.exams[e];
+  return {
+    type: "candidate_rejected", examId: exam.id, slotId: model.slots[s].id, reason: "NO_FREE_ROOM",
+    message: `${exam.id} is student-free in ${model.slots[s].id}, but no ${exam.requiredRoomType === "LAB" ? "laboratory" : "theory room"} with ${model.graph.studentCount[e]}+ seats is free there.`,
+    data: { students: model.graph.studentCount[e], suitableRooms: model.suitableRooms[e].length },
+  };
+}
+
+function notPermittedEvent(model: SchedulingModel, e: number, s: number): Omit<TraceEvent, "seq"> {
+  const exam = model.exams[e], slot = model.slots[s];
+  const why = exam.fixedSlotId && exam.fixedSlotId !== slot.id ? `it is fixed to ${exam.fixedSlotId}`
+    : exam.unavailableSlotIds.includes(slot.id) ? "the exam is marked unavailable in this slot"
+      : `its ${exam.durationMinutes}-minute duration exceeds the ${slot.endMinutes - slot.startMinutes}-minute slot`;
+  return { type: "candidate_rejected", examId: exam.id, slotId: slot.id, reason: "SLOT_NOT_PERMITTED", message: `${exam.id} is not permitted in ${slot.id}: ${why}.` };
+}
+
+/** Called right after `occupancy.assign(e, s, r)`; that assignment only affects room r, so the other rooms' state is as the algorithm saw it. */
+function roomSelectedEvent(model: SchedulingModel, occupancy: Occupancy, e: number, s: number, r: number, policy: "first-fit" | "best-fit"): Omit<TraceEvent, "seq"> {
+  const exam = model.exams[e], room = model.rooms[r], students = model.graph.studentCount[e];
+  const kind = exam.requiredRoomType === "LAB" ? "laboratory" : "theory room";
+  const taken = model.suitableRooms[e].filter((x) => x !== r && !occupancy.roomFree(x, s)).map((x) => model.rooms[x].id);
+  const takenNote = taken.length ? ` ${taken.length} other suitable room${taken.length === 1 ? " was" : "s were"} already taken or blocked in this slot (${taken.slice(0, 4).join(", ")}${taken.length > 4 ? ", …" : ""}).` : "";
+  return {
+    type: "room_selected", examId: exam.id, slotId: model.slots[s].id, roomId: room.id,
+    message: (policy === "best-fit"
+      ? `Best fit: ${room.id} is the smallest free ${kind} that seats ${students} (${room.capacity} seats, ${room.capacity - students} empty).`
+      : `First fit: ${room.id} is the first free ${kind} in id order that seats ${students} (${room.capacity} seats, ${room.capacity - students} empty).`) + takenNote,
+    data: { capacity: room.capacity, students, emptySeats: room.capacity - students, policy, suitableRooms: model.suitableRooms[e].length, takenRooms: taken },
+  };
+}
+
+function runStartedEvent(model: SchedulingModel, message: string, data: TraceEvent["data"] = {}): Omit<TraceEvent, "seq"> {
+  return { type: "run_started", message, data: { exams: model.exams.length, slots: model.slots.length, rooms: model.rooms.length, conflictEdges: model.graph.edges.length, ...data } };
+}
+
+function completedEvent(model: SchedulingModel, assigned: number, stop: SolverResult["stop"], data: TraceEvent["data"] = {}): Omit<TraceEvent, "seq"> {
+  const n = model.exams.length;
+  const how = {
+    complete: "every exam placed",
+    "heuristic-gave-up": `${n - assigned} left unscheduled (a heuristic gave up; this proves nothing about feasibility)`,
+    exhausted: "search exhausted: no schedule satisfies every hard constraint",
+    limit: "search budget reached: feasibility unknown",
+  }[stop];
+  return { type: "run_completed", message: `Finished: ${assigned} of ${n} placed, ${how}. The independent validator checks the result next.`, data: { assigned, unscheduled: n - assigned, stop, ...data } };
+}
+
 export const firstFit: AlgorithmDescriptor = {
   id: "FIRST_FIT", name: "First-Fit baseline", version: "1.0.0", family: "Greedy baseline", complete: false,
   summary: "Places exams in id order into the earliest permissible slot without a student clash, using the first free room that fits.",
-  solve(model) {
+  solve(model, _config, trace) {
     const occupancy = new Occupancy(model);
     const diagnostics: Diagnostic[] = [];
-    model.exams.forEach((_, e) => {
+    trace?.emit(runStartedEvent(model, "First-Fit baseline: one pass over the exams, earliest workable slot, first free room. No look-ahead and no undo."));
+    trace?.emit({ type: "exam_ordered", message: "Exams are taken in identifier order; conflicts play no part in the order.", data: { order: model.exams.map((exam) => exam.id) } });
+    model.exams.forEach((exam, e) => {
+      trace?.emit({ type: "exam_selected", examId: exam.id, message: `Next in id order: ${exam.id}, with ${plural(model.candidateSlots[e].length, "permissible slot")} of ${model.slots.length}.`, data: { permissibleSlots: model.candidateSlots[e].length, degree: model.graph.degree[e], students: model.graph.studentCount[e] } });
       for (const s of model.candidateSlots[e]) {
-        if (!occupancy.studentsFree(e, s)) continue;
+        trace?.emit({ type: "candidate_considered", examId: exam.id, slotId: model.slots[s].id, message: `Try ${exam.id} in ${model.slots[s].id}, the earliest permissible slot not yet tried.` });
+        if (!occupancy.studentsFree(e, s)) { trace?.emit(studentClashEvent(model, occupancy.slotOf, e, s)); continue; }
         const r = occupancy.firstFitRoom(e, s);
-        if (r === -1) continue;
+        if (r === -1) { trace?.emit(noRoomEvent(model, e, s)); continue; }
         occupancy.assign(e, s, r);
+        trace?.emit(roomSelectedEvent(model, occupancy, e, s, r, "first-fit"));
+        trace?.emit({ type: "slot_assigned", examId: exam.id, slotId: model.slots[s].id, roomId: model.rooms[r].id, message: `${exam.id} placed in ${model.slots[s].id}, ${model.rooms[r].id}.` });
         return;
       }
-      diagnostics.push(explainRejection(model, occupancy, e, "First-Fit"));
+      const diagnostic = explainRejection(model, occupancy, e, "First-Fit");
+      diagnostics.push(diagnostic);
+      trace?.emit({ type: "exam_unscheduled", examId: exam.id, relatedExamIds: diagnostic.examIds?.slice(1), message: diagnostic.message });
     });
     const { assignments, unscheduled } = collect(model, occupancy);
-    return { assignments, unscheduledExamIds: unscheduled.map((e) => model.exams[e].id), diagnostics, searchNodes: null, stop: unscheduled.length ? "heuristic-gave-up" : "complete" };
+    const stop = unscheduled.length ? "heuristic-gave-up" : "complete";
+    trace?.emit(completedEvent(model, assignments.length, stop));
+    return { assignments, unscheduledExamIds: unscheduled.map((e) => model.exams[e].id), diagnostics, searchNodes: null, stop };
   },
 };
 
 export const welshPowell: AlgorithmDescriptor = {
   id: "WELSH_POWELL", name: "Welsh-Powell graph colouring", version: "1.0.0", family: "Graph colouring", complete: false,
   summary: "Orders exams by conflict degree and fills one slot (colour) at a time, then allocates the best-fit room. Fixed-slot exams are placed first.",
-  solve(model) {
+  solve(model, _config, trace) {
     const occupancy = new Occupancy(model);
     const order = welshPowellOrder(model.graph, model.exams);
+    trace?.emit(runStartedEvent(model, "Welsh-Powell: sort exams by conflict degree, place fixed-slot exams, then fill one slot (colour) at a time with every exam that fits, allocating the best-fit room."));
+    trace?.emit({
+      type: "exam_ordered", message: "Vertex order: conflict degree descending, then student count descending, then id. High-degree exams are coloured first because they are hardest to fit later.",
+      data: { order: order.map((e) => model.exams[e].id), degrees: order.map((e) => model.graph.degree[e]) },
+    });
     const place = (e: number, s: number) => {
-      if (!model.candidateSlots[e].includes(s) || !occupancy.studentsFree(e, s)) return false;
+      const examId = model.exams[e].id, slotId = model.slots[s].id;
+      trace?.emit({ type: "candidate_considered", examId, slotId, message: `Can ${examId} (degree ${model.graph.degree[e]}) join slot ${slotId}?`, data: { degree: model.graph.degree[e] } });
+      if (!model.candidateSlots[e].includes(s)) { trace?.emit(notPermittedEvent(model, e, s)); return false; }
+      if (!occupancy.studentsFree(e, s)) { trace?.emit(studentClashEvent(model, occupancy.slotOf, e, s)); return false; }
       const r = occupancy.bestFitRoom(e, s);
-      if (r === -1) return false;
+      if (r === -1) { trace?.emit(noRoomEvent(model, e, s)); return false; }
       occupancy.assign(e, s, r);
+      trace?.emit(roomSelectedEvent(model, occupancy, e, s, r, "best-fit"));
+      trace?.emit({ type: "slot_assigned", examId, slotId, roomId: model.rooms[r].id, message: `${examId} coloured ${slotId}, in ${model.rooms[r].id}.` });
       return true;
     };
     for (const e of order) {
       const fixed = model.exams[e].fixedSlotId;
-      if (fixed !== null) place(e, model.slotIndex.get(fixed)!);
+      if (fixed === null) continue;
+      trace?.emit({ type: "exam_selected", examId: model.exams[e].id, slotId: fixed, message: `${model.exams[e].id} is fixed to ${fixed}, so it is placed before any colouring.` });
+      place(e, model.slotIndex.get(fixed)!);
     }
     for (let s = 0; s < model.slots.length; s++) {
+      trace?.emit({ type: "slot_opened", slotId: model.slots[s].id, message: `Colour ${s + 1}: slot ${model.slots[s].id}. Walk the degree order and add each unplaced exam that has no conflict here.`, data: { colour: s + 1, unplaced: occupancy.slotOf.filter((x) => x === -1).length } });
       for (const e of order) if (occupancy.slotOf[e] === -1 && model.exams[e].fixedSlotId === null) place(e, s);
     }
     const { assignments, unscheduled } = collect(model, occupancy);
-    return {
-      assignments, unscheduledExamIds: unscheduled.map((e) => model.exams[e].id),
-      diagnostics: unscheduled.map((e) => explainRejection(model, occupancy, e, "Welsh-Powell")),
-      searchNodes: null, stop: unscheduled.length ? "heuristic-gave-up" : "complete",
-      colorsUsed: new Set(occupancy.slotOf.filter((s) => s !== -1)).size,
-    };
+    const diagnostics = unscheduled.map((e) => explainRejection(model, occupancy, e, "Welsh-Powell"));
+    diagnostics.forEach((d, i) => trace?.emit({ type: "exam_unscheduled", examId: model.exams[unscheduled[i]].id, relatedExamIds: d.examIds?.slice(1), message: d.message }));
+    const stop = unscheduled.length ? "heuristic-gave-up" : "complete";
+    const colorsUsed = new Set(occupancy.slotOf.filter((s) => s !== -1)).size;
+    trace?.emit(completedEvent(model, assignments.length, stop, { colorsUsed }));
+    return { assignments, unscheduledExamIds: unscheduled.map((e) => model.exams[e].id), diagnostics, searchNodes: null, stop, colorsUsed };
   },
 };
 
@@ -112,7 +204,7 @@ class SearchLimit extends Error {}
 export const backtracking: AlgorithmDescriptor = {
   id: "BACKTRACKING", name: "Constraint-aware backtracking", version: "1.0.0", family: "Constraint satisfaction", complete: true,
   summary: "Complete search over (slot, room) pairs with most-constrained-first ordering, forward checking and best-fit room ordering, bounded by node and time limits.",
-  solve(model, config) {
+  solve(model, config, trace) {
     const n = model.exams.length;
     const { graph, slotOverlap, slotDay } = model;
     // Domain of each exam: every (slot, room) pair allowed by unary constraints.
@@ -128,6 +220,7 @@ export const backtracking: AlgorithmDescriptor = {
     let best = { count: -1, slotOf: [...slotOf], roomOf: [...roomOf] };
     const deadline = Date.now() + config.timeLimitMs;
     const trail: { e: number; i: number }[] = [];
+    trace?.emit(runStartedEvent(model, "Backtracking: depth-first search over (slot, room) values. Pick the most constrained exam (MRV), try its values best-first, prune neighbours' domains (forward checking), and undo on dead ends.", { totalValues: domain.reduce((sum, v) => sum + v.length, 0), maxNodes: config.maxNodes, timeLimitMs: config.timeLimitMs }));
 
     const choose = () => {
       let pick = -1;
@@ -149,6 +242,7 @@ export const backtracking: AlgorithmDescriptor = {
       return load * 1000 + (model.rooms[r].capacity - graph.studentCount[e]);
     };
 
+    /** Removes values that clash with (e, s, r). Returns the first exam left with an empty domain, or -1. */
     const prune = (depth: number, e: number, s: number, r: number) => {
       for (let m = 0; m < n; m++) {
         if (slotOf[m] !== -1) continue;
@@ -161,9 +255,9 @@ export const backtracking: AlgorithmDescriptor = {
             prunedAt[m][i] = depth; alive[m]--; trail.push({ e: m, i });
           }
         }
-        if (alive[m] === 0) return false;
+        if (alive[m] === 0) return m;
       }
-      return true;
+      return -1;
     };
 
     const restore = (depth: number) => {
@@ -177,16 +271,26 @@ export const backtracking: AlgorithmDescriptor = {
       if (assignedCount > best.count) best = { count: assignedCount, slotOf: [...slotOf], roomOf: [...roomOf] };
       if (assignedCount === n) return true;
       const e = choose();
+      const examId = model.exams[e].id;
+      trace?.emit({ type: "exam_selected", examId, depth, message: `MRV picks ${examId}: ${plural(alive[e], "(slot, room) value")} left, the fewest of any unplaced exam (ties: higher degree, then more students).`, data: { remainingValues: alive[e], degree: graph.degree[e], students: graph.studentCount[e] } });
       const candidates = domain[e]
         .map((v, i) => ({ ...v, i }))
         .filter((v) => !prunedAt[e][v.i])
         .map((v) => ({ ...v, score: valueScore(e, v.s, v.r) }))
         .sort((a, b) => a.score - b.score || a.s - b.s || a.r - b.r);
-      for (const { s, r } of candidates) {
+      for (const { s, r, score } of candidates) {
         nodes++;
         if (nodes > config.maxNodes || ((nodes & 127) === 0 && Date.now() > deadline)) throw new SearchLimit();
+        trace?.emit({ type: "candidate_considered", examId, slotId: model.slots[s].id, roomId: model.rooms[r].id, depth, node: nodes, message: `Try ${examId} in ${model.slots[s].id} / ${model.rooms[r].id} (value score ${score}; lower keeps shared students off the same day and wastes fewer seats).`, data: { score } });
         slotOf[e] = s; roomOf[e] = r; assignedCount++;
-        if (prune(depth, e, s, r) && search(depth + 1)) return true;
+        const wiped = prune(depth, e, s, r);
+        if (wiped !== -1) {
+          trace?.emit({ type: "forward_check_failed", examId, slotId: model.slots[s].id, roomId: model.rooms[r].id, depth, node: nodes, relatedExamIds: [model.exams[wiped].id], message: `Forward check: ${examId} in ${model.slots[s].id} / ${model.rooms[r].id} would leave ${model.exams[wiped].id} with no (slot, room) value, so this value is discarded without searching deeper.` });
+        } else {
+          trace?.emit({ type: "slot_assigned", examId, slotId: model.slots[s].id, roomId: model.rooms[r].id, depth, node: nodes, message: `${examId} placed in ${model.slots[s].id}, ${model.rooms[r].id} at depth ${depth}; every remaining exam still has a value.`, data: { capacity: model.rooms[r].capacity, students: graph.studentCount[e] } });
+          if (search(depth + 1)) return true;
+          trace?.emit({ type: "backtrack", examId, slotId: model.slots[s].id, roomId: model.rooms[r].id, depth, node: nodes, message: `No complete schedule below ${examId} in ${model.slots[s].id} / ${model.rooms[r].id}: undo it and try its next value.` });
+        }
         restore(depth);
         slotOf[e] = -1; roomOf[e] = -1; assignedCount--;
       }
@@ -199,6 +303,7 @@ export const backtracking: AlgorithmDescriptor = {
     } catch (error) {
       if (!(error instanceof SearchLimit)) throw error;
       stop = "limit";
+      trace?.emit({ type: "search_limit_reached", node: nodes, message: `Search budget reached after ${nodes.toLocaleString("en-US")} nodes (limit ${config.maxNodes.toLocaleString("en-US")} nodes / ${config.timeLimitMs} ms). The deepest partial schedule is kept; feasibility is unknown.`, data: { nodes, deepest: best.count } });
     }
 
     const finalSlot = stop === "complete" ? slotOf : best.slotOf;
@@ -224,6 +329,10 @@ export const backtracking: AlgorithmDescriptor = {
         examIds: unscheduled, remediation: "Add slots or rooms, or relax fixed-slot and unavailability constraints.",
       });
     }
+    for (const examId of unscheduled) {
+      trace?.emit({ type: "exam_unscheduled", examId, message: stop === "exhausted" ? `${examId} is unplaced: the complete search found no schedule for all exams.` : `${examId} is not in the deepest partial schedule found before the search budget ran out.` });
+    }
+    trace?.emit(completedEvent(model, assignments.length, stop, { nodes }));
     return { assignments, unscheduledExamIds: unscheduled, diagnostics, searchNodes: nodes, stop };
   },
 };

@@ -3,7 +3,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { usePathname } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
-import { Bell, GraduationCap, CalendarDays } from "lucide-react";
+import { Bell, GraduationCap, CalendarDays, Presentation } from "lucide-react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ const routeLabels: Record<string, string> = {
   "/admin/schedules": "Timetable Grid",
   "/admin/optimization": "Optimization Lab",
   "/admin/conflicts": "Conflict Analysis",
+  "/admin/demo-studio": "Judge Demo Studio",
   "/admin/import": "Import & Export",
   "/admin/analytics": "Analytics",
   "/admin/test-lab": "Test Lab",
@@ -55,14 +56,14 @@ export function AdminTopBar() {
       <Separator orientation="vertical" className="h-5" />
 
       {/* Breadcrumbs */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 overflow-hidden text-sm whitespace-nowrap">
         {breadcrumbs.map((crumb, i) => (
           <span key={crumb.href} className="flex items-center gap-1.5">
             {i > 0 && (
               <span className="text-muted-foreground/40">/</span>
             )}
             {i === breadcrumbs.length - 1 ? (
-              <span className="font-medium text-foreground">{crumb.label}</span>
+              <span className="truncate font-medium text-foreground">{crumb.label}</span>
             ) : (
               <Link
                 href={crumb.href}
@@ -79,16 +80,29 @@ export function AdminTopBar() {
       <div className="flex-1" />
 
       {/* Quick Access to Student Portal and Schedules */}
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
+        <Link
+          href="/admin/demo-studio"
+          className={cn(
+            buttonVariants({ variant: pathname.startsWith("/admin/demo-studio") ? "secondary" : "default", size: "sm" }),
+            "h-8 text-xs gap-1.5"
+          )}
+          aria-label="Judge Demo Studio"
+        >
+          <Presentation className="h-3.5 w-3.5" />
+          <span className="hidden lg:inline">Judge Demo</span>
+        </Link>
+
         <Link
           href="/student"
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
             "h-8 text-xs gap-1.5 hidden sm:inline-flex"
           )}
+          aria-label="Student Portal"
         >
           <GraduationCap className="h-3.5 w-3.5 text-primary" />
-          Student Portal
+          <span className="hidden xl:inline">Student Portal</span>
         </Link>
 
         <Link
@@ -97,9 +111,10 @@ export function AdminTopBar() {
             buttonVariants({ variant: "ghost", size: "sm" }),
             "h-8 text-xs gap-1.5 hidden sm:inline-flex"
           )}
+          aria-label="Timetable Grid"
         >
           <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-          Timetable Grid
+          <span className="hidden xl:inline">Timetable Grid</span>
         </Link>
 
         {/* Notifications */}

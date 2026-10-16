@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronLeft, ChevronRight, FileSpreadsheet, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 type ResourceName = "rooms" | "subjects" | "time-slots" | "student-groups";
+const IMPORT_ENTITY: Record<ResourceName, string> = { rooms: "rooms", subjects: "subjects", "time-slots": "timeslots", "student-groups": "student_groups" };
 type Field = { key: string; label: string; type?: "text" | "number" | "date" | "time" | "select" | "checkbox"; options?: string[]; optional?: boolean };
 type Config = { title: string; description: string; rowKey: string; fields: Field[]; columns: { key: string; label: string }[]; singular: string };
 
@@ -150,7 +152,10 @@ export function ResourceWorkspace({ resource }: { resource: ResourceName }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div><h1 className="text-2xl font-semibold tracking-tight">{config.title}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{config.description}</p></div>
-        <Button onClick={openCreate} className="shrink-0"><Plus /> Add {config.singular}</Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link href={`/admin/import?entity=${IMPORT_ENTITY[resource]}`} className="inline-flex h-9 items-center gap-1.5 rounded-md border bg-background px-3 text-sm font-medium hover:bg-muted"><FileSpreadsheet className="size-4" />Import / export CSV</Link>
+          <Button onClick={openCreate}><Plus /> Add {config.singular}</Button>
+        </div>
       </div>
 
       {(error || notice) && <div className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${error ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700"}`}>
@@ -168,7 +173,7 @@ export function ResourceWorkspace({ resource }: { resource: ResourceName }) {
 
       <Card><CardHeader className="pb-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><CardTitle className="text-base">Database records</CardTitle><CardDescription>{total} record{total === 1 ? "" : "s"} found</CardDescription></div><form className="relative w-full sm:w-80" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(pendingSearch); }}><Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input className="pl-9" placeholder={`Search ${config.singular}s`} value={pendingSearch} onChange={(event) => setPendingSearch(event.target.value)} /></form></div></CardHeader><CardContent>
         <div className="overflow-x-auto rounded-lg border"><table className="w-full min-w-[720px] text-sm"><thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr>{config.columns.map((column) => <th key={column.key} className="px-3 py-2.5 font-medium">{column.label}</th>)}<th className="px-3 py-2.5 text-right">Actions</th></tr></thead><tbody>
-          {loading ? <tr><td colSpan={config.columns.length + 1} className="px-3 py-10 text-center text-muted-foreground">Loading records…</td></tr> : sortedRows.length === 0 ? <tr><td colSpan={config.columns.length + 1} className="px-3 py-10 text-center text-muted-foreground">No {config.singular}s match this view.</td></tr> : sortedRows.map((row) => <tr key={String(row.id)} className="border-t hover:bg-muted/30">{config.columns.map((column) => { const value = readPath(row, column.key); const isBoolean = typeof value === "boolean"; return <td key={column.key} className="px-3 py-3">{isBoolean ? <Badge variant={value ? "secondary" : "outline"}>{value ? "Available" : "Inactive"}</Badge> : column.key === "roomType" || column.key === "session" ? <Badge variant="outline" className="capitalize">{String(value ?? "—")}</Badge> : column.key === "requiresLab" ? <Badge variant="outline">{value ? "Required" : "No"}</Badge> : column.key === "date" && value ? new Date(String(value)).toLocaleDateString() : value === null || value === undefined || value === "" ? <span className="text-muted-foreground">—</span> : String(value)}</td>; })}<td className="px-3 py-3"><div className="flex justify-end gap-1"><Button size="icon-sm" variant="ghost" aria-label={`Edit ${config.singular}`} onClick={() => openEdit(row)}><Pencil /></Button><Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Remove ${config.singular}`} onClick={() => void deactivate(row)}><Trash2 /></Button></div></td></tr>)}
+          {loading ? <tr><td colSpan={config.columns.length + 1} className="px-3 py-10 text-center text-muted-foreground">Loading records…</td></tr> : sortedRows.length === 0 ? <tr><td colSpan={config.columns.length + 1} className="px-3 py-10 text-center text-muted-foreground">No {config.singular}s match this view.</td></tr> : sortedRows.map((row) => <tr key={String(row.id)} className="border-t hover:bg-muted/30">{config.columns.map((column) => { const value = readPath(row, column.key); return <td key={column.key} className="px-3 py-3">{column.key === "requiresLab" ? <Badge variant={value ? "secondary" : "outline"}>{value ? "Required" : "Not required"}</Badge> : typeof value === "boolean" ? <Badge variant={value ? "secondary" : "outline"}>{value ? "Available" : "Inactive"}</Badge> : column.key === "roomType" || column.key === "session" ? <Badge variant="outline" className="capitalize">{String(value ?? "—")}</Badge> : column.key === "date" && value ? new Date(String(value)).toLocaleDateString() : value === null || value === undefined || value === "" ? <span className="text-muted-foreground">—</span> : String(value)}</td>; })}<td className="px-3 py-3"><div className="flex justify-end gap-1"><Button size="icon-sm" variant="ghost" aria-label={`Edit ${config.singular}`} onClick={() => openEdit(row)}><Pencil /></Button><Button size="icon-sm" variant="ghost" className="text-destructive hover:text-destructive" aria-label={`Remove ${config.singular}`} onClick={() => void deactivate(row)}><Trash2 /></Button></div></td></tr>)}
         </tbody></table></div>
         <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground"><span>Page {page} of {pages}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page <= 1 || loading} onClick={() => setPage((current) => current - 1)}><ChevronLeft /> Previous</Button><Button size="sm" variant="outline" disabled={page >= pages || loading} onClick={() => setPage((current) => current + 1)}>Next <ChevronRight /></Button></div></div>
       </CardContent></Card>

@@ -1,7 +1,7 @@
 import { validateDataQuality } from "./data-quality";
 import { ALGORITHM_IDS, type AlgorithmId, type Diagnostic, type Invigilator, type RunOutcome, type SchedulingInput } from "./domain";
 import { mergeConfig, prepareDataset, runAlgorithm, type RunResult } from "./engine";
-import { campusMini, cohort, exam, oddCycle, pairedTwelve, room, slot } from "./fixtures";
+import { campusMini, cohort, exam, oddCycle, pairedTwelve, room, slot, tamperCampusMiniSchedule } from "./fixtures";
 import { allocateInvigilators, validateInvigilation } from "./invigilation";
 import { normalizeDataset } from "./normalize";
 import { publishGate } from "./publication";
@@ -350,15 +350,8 @@ export const TEST_CASES: TestCase[] = [
       const input = campusMini();
       const run = runAlgorithm(prepareDataset(input), "BACKTRACKING");
       const clean = validateSchedule(input, run.assignments);
-      const tampered = run.assignments.map((a) => ({ examId: a.examId, slotId: a.slotId, roomId: a.roomId }));
-      const at = (id: string) => tampered.find((a) => a.examId === id)!;
-      // Same slot and room as BCA-101, with which it shares 40 students.
-      at("BCA-102").slotId = at("BCA-101").slotId;
-      at("BCA-102").roomId = at("BCA-101").roomId;
-      // 60 students in a 50-seat laboratory.
-      at("MCA-102P").roomId = "LAB-50";
-      // A second assignment for an exam that is already placed.
-      tampered.push({ examId: "BCA-301", slotId: "D3-E", roomId: "R-120" });
+      // BCA-102 onto BCA-101's slot and room (40 shared students), MCA-102P (60) into LAB-50, and a duplicate BCA-301.
+      const tampered = tamperCampusMiniSchedule(run.assignments);
       const report = validateSchedule(input, tampered);
       const found = new Set(report.violations.map((v) => v.code));
       const expectCodes: ViolationCode[] = ["STUDENT_OVERLAP", "ROOM_DOUBLE_BOOKED", "ROOM_CAPACITY_EXCEEDED", "DUPLICATE_ASSIGNMENT"];

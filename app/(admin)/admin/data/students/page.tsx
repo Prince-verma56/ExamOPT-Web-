@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CircleAlert, RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, CircleAlert, FileSpreadsheet, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +46,7 @@ export default function StudentsPage() {
         eyebrow="Data workspace"
         title="Students"
         description="Every student and the examinations they sit, read from the enrollment records the scheduler uses to build the conflict graph. A backlog exam is one outside the student's own program or below their semester; it creates cross-semester conflicts."
-        actions={<StudentLinkModal onLinked={() => void load()} />}
+        actions={<><Link href="/admin/import?entity=students" className="inline-flex h-8 items-center gap-1.5 rounded-md border bg-background px-3 text-xs font-medium hover:bg-muted"><FileSpreadsheet className="size-3.5" />Import / export CSV</Link><StudentLinkModal onLinked={() => void load()} /></>}
       />
 
       {error && <p className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/4 p-4 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="size-4" />{error}</span><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw />Retry</Button></p>}

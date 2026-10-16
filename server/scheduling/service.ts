@@ -8,11 +8,13 @@ import { compareRunResults, mergeConfig, prepareDataset, runAlgorithm, type Prep
 import { exportCsv, type ExportKind, type ExportRow } from "./export";
 import { validateInvigilation } from "./invigilation";
 import { loadRawDataset, loadStudent, SchedulingServiceError, type LoadedDataset } from "./loader";
+import { bottleneckScenario, cloneInput, DemoScenarioError, runArena, SCENARIO_META, simulate, type DemoSource, type SimulationRequest } from "./demo";
+import { campusMini } from "./fixtures";
 import { computeMetrics } from "./metrics";
 import { normalizeDataset } from "./normalize";
 import { runStore, type Publication, type RunSummary, type StoredAssignment } from "./persistence";
 import { publishGate } from "./publication";
-import { parseCsv } from "./reference-dataset";
+import { parseCsv, referenceRawDataset } from "./reference-dataset";
 import { buildStudentDayAvailability } from "./student-calendar";
 import { runTestLab, TEST_CASES } from "./test-lab";
 import { validateSchedule } from "./validator";
@@ -80,6 +82,59 @@ function toExportRows(assignments: EnrichedAssignment[]): ExportRow[] {
   }));
 }
 
+function datasetCounts({ input, model }: PreparedDataset) {
+  return {
+    exams: model.exams.length, labExams: model.exams.filter((e) => e.requiredRoomType === "LAB").length,
+    students: new Set(input.enrollments.map((e) => e.studentId)).size, enrollments: input.enrollments.length,
+    backlogEnrollments: input.enrollments.filter((e) => e.isBacklog).length,
+    rooms: model.rooms.length, labRooms: model.rooms.filter((r) => r.roomType === "LAB").length, totalSeats: model.rooms.reduce((sum, r) => sum + r.capacity, 0),
+    slots: model.slots.length, days: new Set(model.slots.map((s) => s.date)).size,
+    fixedSlotExams: model.exams.filter((e) => e.fixedSlotId).length,
+    examUnavailabilities: model.exams.reduce((sum, e) => sum + e.unavailableSlotIds.length, 0),
+    roomUnavailabilities: model.rooms.reduce((sum, r) => sum + r.unavailableSlotIds.length, 0),
+    faculty: input.invigilators?.length ?? 0,
+    invigilationCapacity: (input.invigilators ?? []).reduce((sum, f) => sum + f.maxDuties, 0),
+  };
+}
+
+/** Exam nodes and shared-student edges. Aggregate counts only; no student is identified. */
+function graphView({ model, graph }: PreparedDataset) {
+  const highly = new Set(graph.highlyConstrainedExamIds);
+  return {
+    stats: graph,
+    nodes: model.exams.map((exam, i) => ({
+      id: exam.id, name: exam.name, program: exam.program, semester: exam.semester, students: model.graph.studentCount[i], degree: model.graph.degree[i],
+      requiresLab: exam.requiredRoomType === "LAB", fixedSlotId: exam.fixedSlotId, unavailableSlotIds: exam.unavailableSlotIds, highlyConstrained: highly.has(exam.id),
+      permittedSlotIds: model.candidateSlots[i].map((s) => model.slots[s].id),
+    })),
+    edges: model.graph.edges.map(({ a, b, shared, backlogShared }) => ({
+      source: model.exams[a].id, target: model.exams[b].id, shared, backlogShared,
+      crossCohort: model.exams[a].program !== model.exams[b].program || model.exams[a].semester !== model.exams[b].semester,
+    })),
+  };
+}
+
+let referenceFingerprintCache: string | null = null;
+const referenceFingerprint = () => (referenceFingerprintCache ??= prepareDataset(normalizeDataset(referenceRawDataset("normal"))).fingerprint);
+
+/**
+ * Judge Demo sandbox input. `live` reads the canonical tables through the
+ * normal loader (reads only) and hands back a deep copy; `fixture` is the
+ * Test Lab's in-memory `campusMini()`. Neither path can write anything.
+ */
+async function loadSandbox(source: DemoSource) {
+  if (source === "fixture") {
+    return { input: campusMini(), raw: null, label: "Test Lab fixture campusMini() (in memory)" };
+  }
+  const { raw, dataset } = await loadAll();
+  return { input: cloneInput(dataset.input), raw, label: "Live Supabase tables, read-only snapshot" };
+}
+
+function demoError(error: unknown): never {
+  if (error instanceof DemoScenarioError) throw new SchedulingServiceError(error.code, error.message, error.code === "INVALID_TARGET" ? 400 : 422);
+  throw error;
+}
+
 export const schedulingService = {
   async readiness() {
     const { raw, dataset } = await loadAll();
@@ -90,18 +145,7 @@ export const schedulingService = {
     return {
       fingerprint, loadedAt: new Date().toISOString(),
       status: preflight.hasDataErrors ? "BLOCKED_BY_DATA" : preflight.provenInfeasible ? "PROVEN_INFEASIBLE" : warnings ? "READY_WITH_WARNINGS" : "READY",
-      counts: {
-        exams: model.exams.length, labExams: model.exams.filter((e) => e.requiredRoomType === "LAB").length,
-        students: new Set(input.enrollments.map((e) => e.studentId)).size, enrollments: input.enrollments.length,
-        backlogEnrollments: input.enrollments.filter((e) => e.isBacklog).length,
-        rooms: model.rooms.length, labRooms: model.rooms.filter((r) => r.roomType === "LAB").length, totalSeats: model.rooms.reduce((sum, r) => sum + r.capacity, 0),
-        slots: model.slots.length, days: new Set(model.slots.map((s) => s.date)).size,
-        fixedSlotExams: model.exams.filter((e) => e.fixedSlotId).length,
-        examUnavailabilities: model.exams.reduce((sum, e) => sum + e.unavailableSlotIds.length, 0),
-        roomUnavailabilities: model.rooms.reduce((sum, r) => sum + r.unavailableSlotIds.length, 0),
-        faculty: input.invigilators?.length ?? 0,
-        invigilationCapacity: (input.invigilators ?? []).reduce((sum, f) => sum + f.maxDuties, 0),
-      },
+      counts: datasetCounts(dataset),
       preflight: { errors, warnings, hasDataErrors: preflight.hasDataErrors, provenInfeasible: preflight.provenInfeasible, diagnostics: preflight.diagnostics },
       dataQuality: quality,
       constraints: {
@@ -132,19 +176,8 @@ export const schedulingService = {
   },
 
   async conflictGraph() {
-    const { model, graph, fingerprint } = await loadDataset();
-    const highly = new Set(graph.highlyConstrainedExamIds);
-    return {
-      fingerprint, stats: graph,
-      nodes: model.exams.map((exam, i) => ({
-        id: exam.id, name: exam.name, program: exam.program, semester: exam.semester, students: model.graph.studentCount[i], degree: model.graph.degree[i],
-        requiresLab: exam.requiredRoomType === "LAB", fixedSlotId: exam.fixedSlotId, unavailableSlotIds: exam.unavailableSlotIds, highlyConstrained: highly.has(exam.id),
-      })),
-      edges: model.graph.edges.map(({ a, b, shared, backlogShared }) => ({
-        source: model.exams[a].id, target: model.exams[b].id, shared, backlogShared,
-        crossCohort: model.exams[a].program !== model.exams[b].program || model.exams[a].semester !== model.exams[b].semester,
-      })),
-    };
+    const dataset = await loadDataset();
+    return { fingerprint: dataset.fingerprint, ...graphView(dataset) };
   },
 
   async execute(algorithms: AlgorithmId[], overrides: ConfigOverrides | undefined, triggeredBy: string | null) {
@@ -342,6 +375,68 @@ export const schedulingService = {
     const t0 = performance.now();
     const results = runTestLab(caseIds);
     return { results, passed: results.filter((r) => r.passed).length, total: results.length, durationMs: Math.round((performance.now() - t0) * 100) / 100 };
+  },
+
+  /**
+   * Judge Demo: the sandbox dataset with readiness, preflight (kept apart from
+   * schedule validation) and the conflict graph. Reads only.
+   */
+  async demoDataset(source: DemoSource) {
+    const { input, raw, label } = await loadSandbox(source);
+    const dataset = prepareDataset(input);
+    const { preflight, model } = dataset;
+    const quality = raw ? validateDataQuality(qualityTables(raw)) : null;
+    const errors = preflight.diagnostics.filter((d) => d.severity === "error").length;
+    const warnings = preflight.diagnostics.filter((d) => d.severity === "warning").length;
+    const ready = !preflight.hasDataErrors && !preflight.provenInfeasible && (quality?.isValid ?? true);
+    return {
+      source, label, synthetic: true, persisted: false as const, fingerprint: dataset.fingerprint, loadedAt: new Date().toISOString(),
+      /** Whether the snapshot is exactly the bundled reference GLA dataset (by canonical fingerprint). */
+      matchesReferenceDataset: source === "live" ? dataset.fingerprint === referenceFingerprint() : null,
+      status: preflight.hasDataErrors ? "BLOCKED_BY_DATA" : preflight.provenInfeasible ? "PROVEN_INFEASIBLE" : !ready ? "NEEDS_ATTENTION" : warnings ? "READY_WITH_WARNINGS" : "READY",
+      ready,
+      counts: datasetCounts(dataset),
+      preflight: { errors, warnings, hasDataErrors: preflight.hasDataErrors, provenInfeasible: preflight.provenInfeasible, diagnostics: preflight.diagnostics },
+      dataQuality: quality ? { isValid: quality.isValid, status: quality.status, readinessScore: quality.readinessScore, errors: quality.errors.slice(0, 20), warnings: quality.warnings.slice(0, 20) } : null,
+      graph: graphView(dataset),
+      slots: model.slots,
+      rooms: model.rooms,
+      algorithms: describeAlgorithms(),
+      scenarios: SCENARIO_META,
+      defaults: { maxNodes: DEFAULT_CONFIG.maxNodes, timeLimitMs: DEFAULT_CONFIG.timeLimitMs },
+    };
+  },
+
+  /** Judge Demo: every chosen algorithm on its own copy of the same snapshot, with execution traces. Nothing is saved. */
+  async demoArena(source: DemoSource, algorithms: AlgorithmId[], overrides?: ConfigOverrides, benchmark = true) {
+    const { input } = await loadSandbox(source);
+    const config = mergeConfig(overrides);
+    const { entries, ranking } = runArena(input, algorithms, config, { benchmark });
+    return {
+      source, persisted: false as const, fingerprint: prepareDataset(input).fingerprint, config, ranking,
+      rankingRule: "Validator-passed (FEASIBLE) runs first, then fewest unscheduled exams, then lowest soft penalty, then fastest.",
+      entries,
+    };
+  },
+
+  /** Judge Demo scenario H: a preflight-proven bottleneck on an in-memory variant, contrasted with a search limit. */
+  async demoBottleneck(source: DemoSource) {
+    const { input } = await loadSandbox(source);
+    try {
+      return { source, persisted: false as const, mode: "SANDBOX SIMULATION — NOT SAVED TO LIVE DATA", ...bottleneckScenario(input, mergeConfig()) };
+    } catch (error) {
+      demoError(error);
+    }
+  },
+
+  /** Judge Demo: baseline, injected conflict, validation, optional correction and revalidation, all in memory. */
+  async demoSimulate(source: DemoSource, request: SimulationRequest, overrides?: ConfigOverrides) {
+    const { input } = await loadSandbox(source);
+    try {
+      return { source, persisted: false as const, mode: "SANDBOX SIMULATION — NOT SAVED TO LIVE DATA", ...simulate(input, request, mergeConfig(overrides), source) };
+    } catch (error) {
+      demoError(error);
+    }
   },
 
   /** Assignments of a run (default: the active published run, else the newest feasible engine run). */

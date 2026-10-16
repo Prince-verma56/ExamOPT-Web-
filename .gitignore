@@ -57,3 +57,7 @@ hackvision/
 
 
 docs/
+# Playwright output and saved browser sessions (contain login cookies)
+/test-results/
+/playwright-report/
+/tests/e2e/.auth/
