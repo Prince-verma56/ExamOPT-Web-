@@ -9,6 +9,9 @@ describe("Test Lab edge cases", () => {
       "feasible-baseline", "shared-student", "backlog-cross-semester", "capacity-overflow", "lab-unavailable", "fixed-slot-conflict",
       "unavailable-slot", "insufficient-rooms", "invalid-input", "over-constrained-clique", "odd-cycle-search-proof", "search-timeout",
       "independent-validation", "deterministic",
+      // Ported from the reference backend's tests and fixtures
+      "reference-gla-normal", "reference-invalid-corrupted", "reference-lab-bottleneck", "reference-capacity-overflow",
+      "invigilation-rules", "publication-gate",
     ]);
   });
 

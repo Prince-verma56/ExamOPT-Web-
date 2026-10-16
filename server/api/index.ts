@@ -4,13 +4,16 @@ import { ErrorResponseSchema } from '../contracts';
 import { IdempotencyService } from '../integrations/idempotency';
 import { auditService } from '../audit';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { decideAccess, DEMO_PRINCIPAL_ID, isDemoAllowed, parseList } from '@/modules/auth/access';
+import { decideAccess, DEMO_PRINCIPAL_ID, identityFromMetadata, isDemoAllowed, parseList, type LinkedIdentity } from '@/modules/auth/access';
 
 export interface ApiContext {
   userId: string | null;
   role: string;
   permissions: string[];
   requestId: string;
+  /** Student/faculty linkage from Clerk publicMetadata, read server-side. Empty for anonymous and demo sessions. */
+  identity: LinkedIdentity;
+  email: string | null;
 }
 
 export interface ApiHandlerOptions<TReq = unknown> {
@@ -44,19 +47,22 @@ export function isClerkConfigured() {
   return Boolean(key && (key.startsWith('pk_test_') || key.startsWith('pk_live_')));
 }
 
-const profileCache = new Map<string, { email: string | null; role: unknown; expires: number }>();
+type ClerkProfile = { email: string | null; role: unknown; identity: LinkedIdentity; expires: number };
+const profileCache = new Map<string, ClerkProfile>();
+const NO_IDENTITY: LinkedIdentity = { rollNo: null, facultyId: null };
 
-async function clerkProfile(userId: string) {
+async function clerkProfile(userId: string): Promise<ClerkProfile> {
   const cached = profileCache.get(userId);
   if (cached && cached.expires > Date.now()) return cached;
   try {
     const user = await (await clerkClient()).users.getUser(userId);
     const email = user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress ?? null;
-    const profile = { email, role: user.publicMetadata?.role, expires: Date.now() + 60_000 };
+    const metadata = (user.publicMetadata ?? {}) as Record<string, unknown>;
+    const profile = { email, role: metadata.role, identity: identityFromMetadata(metadata), expires: Date.now() + 60_000 };
     profileCache.set(userId, profile);
     return profile;
   } catch {
-    return { email: null, role: undefined, expires: 0 };
+    return { email: null, role: undefined, identity: NO_IDENTITY, expires: 0 };
   }
 }
 
@@ -64,9 +70,11 @@ async function resolveAccess(userId: string | null) {
   const demoAllowed = isDemoAllowed();
   const allowedUserIds = parseList(process.env.EXAMOPT_ADMIN_USER_IDS);
   const allowedEmails = parseList(process.env.EXAMOPT_ADMIN_EMAILS);
-  const needsProfile = Boolean(userId && userId !== DEMO_PRINCIPAL_ID && !demoAllowed && !allowedUserIds.includes(userId.toLowerCase()));
-  const profile = needsProfile ? await clerkProfile(userId!) : null;
-  return decideAccess({ userId, demoAllowed, email: profile?.email, metadataRole: profile?.role, allowedUserIds, allowedEmails });
+  const signedIn = Boolean(userId && userId !== DEMO_PRINCIPAL_ID);
+  // The profile is needed to decide the role, and in any case for student/faculty linkage.
+  const profile = signedIn && isClerkConfigured() ? await clerkProfile(userId!) : null;
+  const access = decideAccess({ userId, demoAllowed, email: profile?.email, metadataRole: profile?.role, allowedUserIds, allowedEmails });
+  return { ...access, identity: profile?.identity ?? NO_IDENTITY, email: profile?.email ?? null };
 }
 
 /**
@@ -104,7 +112,9 @@ export async function createApiRoute<TReq, TRes>(
       userId = isDemoAllowed() ? DEMO_PRINCIPAL_ID : null;
     }
 
-    ({ role, permissions } = await resolveAccess(userId));
+    const resolved = await resolveAccess(userId);
+    ({ role, permissions } = resolved);
+    const { identity, email } = resolved;
 
     if (options.requireAuth && !userId) {
       return errorResponse('UNAUTHORIZED', 'Authentication required', 401);
@@ -159,6 +169,8 @@ export async function createApiRoute<TReq, TRes>(
       role,
       permissions,
       requestId,
+      identity,
+      email,
     };
 
     // 3. Execution (with Idempotency)
@@ -194,8 +206,8 @@ export async function createApiRoute<TReq, TRes>(
       typeof (error as { code?: unknown }).code === 'string' &&
       typeof (error as { status?: unknown }).status === 'number'
     ) {
-      const repositoryError = error as { code: string; message: string; status: number };
-      return errorResponse(repositoryError.code, repositoryError.message, repositoryError.status);
+      const repositoryError = error as { code: string; message: string; status: number; details?: unknown };
+      return errorResponse(repositoryError.code, repositoryError.message, repositoryError.status, repositoryError.details);
     }
     return errorResponse('INTERNAL_ERROR', 'The request could not be completed.', 500);
   }

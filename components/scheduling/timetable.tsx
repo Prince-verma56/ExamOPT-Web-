@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, CalendarDays, CircleAlert, FlaskConical, LayoutGrid, List, Lock, Pin, RefreshCw, Search, ShieldCheck, ShieldX } from "lucide-react";
+import { AlertTriangle, CalendarDays, CircleAlert, FlaskConical, LayoutGrid, List, Lock, Pin, RefreshCw, Search, ShieldCheck, ShieldX, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +15,11 @@ import { api, errorMessage } from "./api";
 import { ALGORITHM_LABEL, clock, dateTime, num, shortDate } from "./format";
 import { OutcomeBadge } from "./outcome-badge";
 import { PageIntro, StatStrip } from "./page-intro";
+import { ExportMenu, PublicationHistory, PublishBlockers, PublishButton } from "./publish-panel";
 import { ValidationChecklist } from "./run-views";
 import { Segmented } from "./segmented";
 import type { schedulingService } from "@/server/scheduling/service";
-import type { RunSummary } from "@/server/scheduling/persistence";
+import type { Publication, RunSummary } from "@/server/scheduling/persistence";
 import type { Violation } from "@/server/scheduling/validator";
 
 type RunDetail = Awaited<ReturnType<typeof schedulingService.runDetail>>;
@@ -44,12 +45,16 @@ export function Timetable() {
   const [program, setProgram] = useState("all");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Block | null>(null);
+  const [publications, setPublications] = useState<Publication[] | null>(null);
 
   const runId = requested ?? runs?.find((r) => r.published?.isActive)?.runId ?? runs?.find((r) => r.outcome === "FEASIBLE")?.runId ?? null;
 
-  useEffect(() => {
+  const loadRuns = useCallback(() => {
     api<{ runs: RunSummary[] }>("/scheduling/runs?limit=100").then((data) => setRuns(data.runs.filter((r) => r.scheduledExams > 0))).catch((e) => { setError(errorMessage(e)); setLoading(false); });
+    api<{ publications: Publication[] }>("/scheduling/publications").then((data) => setPublications(data.publications)).catch(() => setPublications(null));
   }, []);
+
+  useEffect(() => { loadRuns(); }, [loadRuns]);
 
   const loadDetail = useCallback(async (id: string) => {
     setLoading(true); setError(null);
@@ -90,8 +95,15 @@ export function Timetable() {
       <PageIntro
         eyebrow="Saved schedules"
         title="Timetable"
-        description="Saved assignments for a scheduling run, re-checked live by the independent validator against today's data. This view is read-only."
+        description="Saved assignments for a scheduling run, re-checked live by the independent validator against today's data. Publish a validated run to make it the timetable students and faculty see."
         actions={runs && runs.length > 0 && (
+          <>
+          {detail && summary && !loading && (
+            <>
+              <ExportMenu runId={summary.runId} />
+              <PublishButton runId={summary.runId} algorithm={summary.algorithm} gate={detail.publishable} onPublished={() => { loadRuns(); void loadDetail(summary.runId); }} />
+            </>
+          )}
           <Select value={runId ?? ""} onValueChange={(value) => value && selectRun(String(value))}>
             <SelectTrigger className="h-9 min-w-72 bg-card" aria-label="Scheduling run">
               <SelectValue>{(value: string) => {
@@ -110,6 +122,7 @@ export function Timetable() {
               ))}
             </SelectContent>
           </Select>
+          </>
         )}
       />
 
@@ -144,6 +157,12 @@ export function Timetable() {
                   {detail.dataChangedSinceRun === true && " · the dataset has changed since this run was generated"}
                   {summary.source === "legacy" && " · this run predates the Phase 2 engine, so this live check is its first independent validation"}
                 </p>
+                {detail.liveInvigilation && (
+                  <p className="flex items-center gap-1.5 text-xs leading-5 text-muted-foreground">
+                    <UserCheck className="size-3.5" />Invigilators: {detail.liveInvigilation.covered} of {detail.liveInvigilation.total} exams covered
+                    {detail.liveInvigilation.valid ? " · no duty conflicts" : <span className="text-destructive"> · {detail.liveInvigilation.violations.length} duty rule violation(s)</span>}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -151,6 +170,8 @@ export function Timetable() {
               {summary.published && <span className="rounded-full border bg-card px-2.5 py-0.5 text-xs whitespace-nowrap">Published v{summary.published.version}{summary.published.isActive ? " · active" : ""}</span>}
             </div>
           </section>
+
+          <PublishBlockers rejections={detail.publishable.rejections} />
 
           <StatStrip items={[
             { label: "Algorithm", value: ALGORITHM_LABEL[summary.algorithm], hint: summary.runId },
@@ -297,9 +318,11 @@ export function Timetable() {
             </section>
           )}
 
-          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Lock className="mt-0.5 size-3.5 shrink-0" />Read-only. Manual edits are deferred to Phase 3: any change will have to pass the same independent validator before it can be saved or published.</p>
+          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><Lock className="mt-0.5 size-3.5 shrink-0" />Assignments are read-only. Manual moves are not supported yet; to change the timetable, edit the data or constraints and generate a new run, which must pass the same validator before it can be published.</p>
         </>
       )}
+
+      {!loading && <PublicationHistory publications={publications} currentRunId={summary?.runId ?? null} />}
 
       <Sheet open={open !== null} onOpenChange={(value) => { if (!value) setOpen(null); }}>
         <SheetContent side="right" className="w-full gap-0 overflow-y-auto p-0 sm:max-w-md">
@@ -315,6 +338,7 @@ export function Timetable() {
                   ["Slot", `${open.slotId} · ${open.session}`], ["When", `${shortDate(open.date)}, ${clock(open.startMinutes)}–${clock(open.endMinutes)}`],
                   ["Room", `${open.roomId} (${open.roomType === "LAB" ? "lab" : "theory"})`], ["Seats", `${open.students} of ${open.roomCapacity} (${open.roomCapacity ? Math.round(((open.students ?? 0) / open.roomCapacity) * 100) : 0}%)`],
                   ["Fixed slot", open.fixedSlotId ?? "None"], ["Stored head-count", open.storedStudents ?? "—"],
+                  ["Invigilator", open.facultyId ? `${open.facultyName ?? open.facultyId} (${open.facultyId})` : "Not assigned"], ["Department", open.facultyDepartment ?? "—"],
                 ].map(([label, value]) => <div key={label as string} className="bg-card px-6 py-3"><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="mt-0.5 font-medium">{value}</dd></div>)}
               </dl>
               <div className="space-y-3 p-6">

@@ -66,7 +66,7 @@ const navGroups: NavigationGroup[] = [
       { title: "Time Slots", href: "/admin/data/time-slots", icon: Clock },
       { title: "Student Groups", href: "/admin/data/student-groups", icon: Users },
       { title: "Students", href: "/admin/data/students", icon: GraduationCap },
-      { title: "Faculty", href: "/admin/data/faculty", icon: User, badge: "Planned" },
+      { title: "Faculty", href: "/admin/data/faculty", icon: User },
     ],
   },
   {

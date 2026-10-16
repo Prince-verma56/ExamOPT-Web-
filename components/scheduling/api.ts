@@ -26,6 +26,19 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
   return body.data as T;
 }
 
+/** Downloads a CSV export (the API returns the CSV text inside the JSON envelope). */
+export async function downloadCsv(kind: "timetable" | "rooms" | "invigilation", runId?: string) {
+  const params = new URLSearchParams({ kind, ...(runId ? { runId } : {}) });
+  const data = await api<{ filename: string; csv: string; rows: number }>(`/scheduling/export?${params}`);
+  const url = URL.createObjectURL(new Blob([data.csv], { type: "text/csv;charset=utf-8" }));
+  const link = Object.assign(document.createElement("a"), { href: url, download: data.filename });
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return data;
+}
+
 export function errorMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 401) return "Your session has expired. Sign in again to continue.";

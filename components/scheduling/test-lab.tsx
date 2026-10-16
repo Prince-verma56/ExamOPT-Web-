@@ -53,7 +53,7 @@ export function TestLab() {
       <PageIntro
         eyebrow="Edge-case verification"
         title="Test Lab"
-        description="Deterministic synthetic datasets, kept separate from the working data, run through the real engine. Each case asserts the behaviour expected of the solvers and the independent validator; nothing here is simulated."
+        description="Deterministic datasets, kept separate from the working data, run through the real engine: synthetic edge cases plus the reference GLA dataset and its edge-case files. Each case asserts the behaviour expected of the solvers, the validators and the publication gate; nothing here is simulated."
         actions={<Button size="lg" className="h-9" disabled={!cases || running.size > 0} onClick={() => void run()}>{running.size > 1 ? <Loader2 className="animate-spin" /> : <Play />}Run all {cases ? cases.length : ""} tests</Button>}
       />
 
@@ -67,7 +67,9 @@ export function TestLab() {
       ]} />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Segmented label="Category" value={category} onChange={setCategory} options={[{ value: "all", label: "All" }, ...categories.map((c) => ({ value: c, label: c }))]} />
+        <div className="-mx-1 max-w-full overflow-x-auto px-1 pb-1">
+          <Segmented label="Category" value={category} onChange={setCategory} options={[{ value: "all", label: "All" }, ...categories.map((c) => ({ value: c, label: c }))]} />
+        </div>
         {done.length > 0 && <Button variant="ghost" size="sm" onClick={() => { setResults(new Map()); setLastRun(null); }}><RotateCw />Reset</Button>}
       </div>
 

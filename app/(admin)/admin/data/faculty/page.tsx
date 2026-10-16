@@ -1,59 +1,81 @@
 "use client";
 
-import { EXAMOPT_FACULTY } from "@/lib/examopt-data";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { UserCheck, Mail, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { CircleAlert, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { api, errorMessage } from "@/components/scheduling/api";
+import { PageIntro, StatStrip } from "@/components/scheduling/page-intro";
+import type { schedulingService } from "@/server/scheduling/service";
 
+type Roster = Awaited<ReturnType<typeof schedulingService.facultyRoster>>;
+
+/** Faculty roster from the `faculty` table, with duties in the active published timetable. */
 export default function FacultyPage() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <UserCheck className="h-6 w-6 text-primary" />
-            Faculty & Invigilation Roster
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            20 Department Faculty Members · Balanced Invigilation Duty Allocation
-          </p>
-        </div>
-        <Badge variant="outline" className="font-mono text-xs">
-          20 Faculty Available
-        </Badge>
-      </div>
+  const [data, setData] = useState<Roster | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {EXAMOPT_FACULTY.map((f) => (
-          <Card key={f.id} className="hover:border-primary/40 transition-colors shadow-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="text-[10px]">
-                  {f.designation}
-                </Badge>
-                <Badge
-                  className={
-                    f.assignedCount <= f.maxInvigilations
-                      ? "bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                      : "bg-amber-600/10 text-amber-600 border-amber-500/20"
-                  }
-                  variant="outline"
-                >
-                  {f.assignedCount} / {f.maxInvigilations} Slots
-                </Badge>
-              </div>
-              <CardTitle className="text-base font-semibold pt-2">{f.name}</CardTitle>
-              <CardDescription className="text-xs truncate">{f.department}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2 truncate">
-                <Mail className="h-3 w-3 shrink-0" />
-                <span className="truncate">{f.email}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+  const load = useCallback(async () => {
+    setError(null);
+    try { setData(await api<Roster>("/faculty")); }
+    catch (e) { setError(errorMessage(e)); }
+  }, []);
+
+  useEffect(() => {
+    // Initial fetch; state is set after the response.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  const duties = data?.faculty.reduce((sum, f) => sum + f.publishedDuties, 0) ?? 0;
+  const capacity = data?.faculty.reduce((sum, f) => sum + f.maxDuties, 0) ?? 0;
+
+  return (
+    <div className="space-y-8 pb-8">
+      <PageIntro eyebrow="Data workspace" title="Faculty & invigilation" description="Invigilators are assigned after each schedule is generated: one per exam, never in two overlapping slots, never in a slot they are unavailable for, never beyond their duty cap, preferring the program's department and then the lightest load." />
+
+      {error && <p className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/4 p-4 text-sm text-destructive"><span className="flex items-center gap-2"><CircleAlert className="size-4" />{error}</span><Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw />Retry</Button></p>}
+
+      {!data ? <Skeleton className="h-21 rounded-xl" /> : (
+        <StatStrip items={[
+          { label: "Faculty", value: data.faculty.length },
+          { label: "Duty capacity", value: capacity, hint: "sum of duty caps" },
+          { label: "Published duties", value: duties, hint: data.publication ? `version ${data.publication.version}` : "nothing published" },
+          { label: "Uncovered exams", value: data.uncovered.length, hint: data.uncovered.length ? data.uncovered.join(", ") : "every exam has an invigilator", tone: data.uncovered.length ? "warning" : "default" },
+        ]} />
+      )}
+
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <Table className="min-w-180">
+          <TableHeader><TableRow className="bg-muted/40 hover:bg-muted/40">
+            <TableHead className="pl-4">Faculty</TableHead><TableHead>Department</TableHead><TableHead>Unavailable slots</TableHead><TableHead className="pr-4">Published duties / cap</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            {!data && Array.from({ length: 8 }, (_, i) => <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-5" /></TableCell></TableRow>)}
+            {data?.faculty.map((f) => {
+              const pct = f.maxDuties ? Math.min(100, (f.publishedDuties / f.maxDuties) * 100) : 0;
+              return (
+                <TableRow key={f.id}>
+                  <TableCell className="pl-4"><span className="font-medium">{f.name}</span><span className="block font-mono text-[11px] text-muted-foreground">{f.id}</span></TableCell>
+                  <TableCell className="text-xs">{f.department}</TableCell>
+                  <TableCell className="font-mono text-[11px] text-muted-foreground">{f.unavailableSlotIds.join(" · ") || "—"}</TableCell>
+                  <TableCell className="pr-4">
+                    <div className="flex items-center gap-2 text-xs tabular-nums">
+                      <span className="w-10">{f.publishedDuties}/{f.maxDuties}</span>
+                      <span className="h-1.5 w-24 overflow-hidden rounded-full bg-muted"><span className={cn("block h-full rounded-full", f.publishedDuties > f.maxDuties ? "bg-destructive" : "bg-foreground/40")} style={{ width: `${pct}%` }} /></span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {data && !data.faculty.length && <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">The faculty table is empty, so runs are generated without invigilators.</TableCell></TableRow>}
+          </TableBody>
+        </Table>
       </div>
+      {data && !data.publication && <p className="text-sm text-muted-foreground">Duty counts appear once a timetable is published. Generated runs already carry invigilators; see the <Link href="/admin/schedules" className="text-primary hover:underline">Timetable</Link>.</p>}
     </div>
   );
 }

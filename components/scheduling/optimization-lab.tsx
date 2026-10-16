@@ -21,13 +21,16 @@ import type { AlgorithmId, Diagnostic, EngineConfig } from "@/server/scheduling/
 import type { RunResult } from "@/server/scheduling/engine";
 import type { GraphStats } from "@/server/scheduling/conflict-graph";
 import type { RunSummary } from "@/server/scheduling/persistence";
+import type { DataQualityReport } from "@/server/scheduling/data-quality";
+import { QualityIssues } from "./quality-report";
 
 interface Readiness {
   fingerprint: string;
   loadedAt: string;
   status: "READY" | "READY_WITH_WARNINGS" | "BLOCKED_BY_DATA" | "PROVEN_INFEASIBLE";
-  counts: Record<"exams" | "labExams" | "students" | "enrollments" | "backlogEnrollments" | "rooms" | "labRooms" | "totalSeats" | "slots" | "days" | "fixedSlotExams" | "examUnavailabilities" | "roomUnavailabilities", number>;
+  counts: Record<"exams" | "labExams" | "students" | "enrollments" | "backlogEnrollments" | "rooms" | "labRooms" | "totalSeats" | "slots" | "days" | "fixedSlotExams" | "examUnavailabilities" | "roomUnavailabilities" | "faculty" | "invigilationCapacity", number>;
   preflight: { errors: number; warnings: number; diagnostics: Diagnostic[] };
+  dataQuality: DataQualityReport;
   graph: GraphStats;
   algorithms: { id: AlgorithmId; name: string; version: string; family: string; summary: string; complete: boolean }[];
   defaults: EngineConfig;
@@ -165,6 +168,7 @@ export function OptimizationLab() {
             { label: "Rooms", value: readiness.counts.rooms, hint: `${readiness.counts.labRooms} labs · ${num(readiness.counts.totalSeats)} seats` },
             { label: "Time slots", value: readiness.counts.slots, hint: `${readiness.counts.days} days` },
             { label: "Fixed slots", value: readiness.counts.fixedSlotExams, hint: `${readiness.counts.examUnavailabilities + readiness.counts.roomUnavailabilities} blackouts` },
+            { label: "Invigilators", value: readiness.counts.faculty, hint: `${readiness.counts.invigilationCapacity} duties available` },
             { label: "Conflict graph", value: `${g!.edgeCount} edges`, hint: `${num(g!.density * 100, 0)}% dense · max ${g!.maxDegree}` },
           ]} />
         )}
@@ -196,6 +200,12 @@ export function OptimizationLab() {
                 </p>
               )}
               <DiagnosticList diagnostics={readiness.preflight.diagnostics} empty="No preflight findings. References, durations, capacities, laboratories and fixed slots are consistent." />
+              <div className="space-y-2 border-t pt-3">
+                <p className="text-xs font-medium">
+                  Data quality checks (ported from the reference validator) · readiness {readiness.dataQuality.readinessScore}/100 · {readiness.dataQuality.summary.totalErrors} errors · {readiness.dataQuality.summary.totalWarnings} warnings
+                </p>
+                <QualityIssues report={readiness.dataQuality} />
+              </div>
             </CollapsibleContent>
           </Collapsible>
         )}
@@ -392,6 +402,8 @@ function ResultCard({ row, rank, maxPenalty, onOpen }: { row: RunRow; rank: numb
         <div><dt className="text-[11px] text-muted-foreground">Seat fill</dt><dd className="font-semibold tabular-nums">{row.fill === null ? "—" : `${num(row.fill, 1)}%`}</dd></div>
         <div><dt className="text-[11px] text-muted-foreground">Extra same-day</dt><dd className="font-semibold tabular-nums">{num(row.sameDay)}</dd></div>
         <div><dt className="text-[11px] text-muted-foreground">Back-to-back</dt><dd className="font-semibold tabular-nums">{num(row.backToBack)}</dd></div>
+        <div><dt className="text-[11px] text-muted-foreground">Invigilators</dt><dd className={cn("font-semibold tabular-nums", row.invigilation && !row.invigilation.valid && "text-destructive")}>{row.invigilation ? `${row.invigilation.covered}/${row.invigilation.total}` : "—"}</dd></div>
+        <div><dt className="text-[11px] text-muted-foreground" title="Reference backend's 0-100 score; for comparison only">Ref. score</dt><dd className="font-semibold tabular-nums">{row.referenceScore === null ? "—" : num(row.referenceScore, 1)}</dd></div>
       </dl>
       {row.penalty !== null && (
         <div className="mt-4 space-y-1.5">

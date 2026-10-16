@@ -33,12 +33,12 @@ const configs: Record<ResourceName, Config> = {
   },
   "time-slots": {
     title: "Examination time slots", singular: "time slot", rowKey: "slots",
-    description: "Define valid examination dates and session windows. The API rejects time ranges whose end precedes their start.",
+    description: "Examination dates and session windows, saved to the timetable the scheduler reads. A slot used by saved runs or fixed to a subject cannot be removed.",
     fields: [
       { key: "date", label: "Date", type: "date" }, { key: "startTime", label: "Start", type: "time" }, { key: "endTime", label: "End", type: "time" },
-      { key: "session", label: "Session", type: "select", options: ["morning", "afternoon", "evening"] }, { key: "label", label: "Label", optional: true }, { key: "isAvailable", label: "Available", type: "checkbox" },
+      { key: "session", label: "Session", type: "select", options: ["morning", "evening"] }, { key: "label", label: "Slot ID (e.g. D6-M)", optional: true },
     ],
-    columns: [{ key: "date", label: "Date" }, { key: "startTime", label: "Start" }, { key: "endTime", label: "End" }, { key: "session", label: "Session" }, { key: "label", label: "Label" }, { key: "isAvailable", label: "Availability" }],
+    columns: [{ key: "date", label: "Date" }, { key: "label", label: "Slot" }, { key: "dayNumber", label: "Day" }, { key: "startTime", label: "Start" }, { key: "endTime", label: "End" }, { key: "session", label: "Session" }],
   },
   "student-groups": {
     title: "Student groups", singular: "student group", rowKey: "groups",
@@ -56,7 +56,7 @@ function readPath(row: Record<string, unknown>, path: string): unknown {
 }
 
 function initialValues(resource: ResourceName) {
-  return Object.fromEntries(configs[resource].fields.map((field) => [field.key, field.type === "checkbox" ? (field.key === "isAvailable") : ""]));
+  return Object.fromEntries(configs[resource].fields.map((field) => [field.key, field.type === "checkbox" ? false : field.type === "select" ? field.options?.[0] ?? "" : ""]));
 }
 
 function responseError(payload: unknown) {

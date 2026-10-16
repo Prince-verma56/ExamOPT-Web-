@@ -1,163 +1,126 @@
+/**
+ * ExamOpt Studio — Hero Section with Static Background Image
+ * Background: /Images/BG Images/HeroSectionBG.png
+ * Left text content only — top-left anchored, ~top 35% of viewport.
+ * No bottom feature bar, no metrics, no logos strip.
+ */
+
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
-import { AlertTriangle, ArrowRight, Play } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { ArrowRight, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useGsap } from "@/animations/hooks/use-gsap";
-import { Container, DisplayHeading, Em, Eyebrow, Lede } from "@/components/marketing/primitives";
-import { CampusLineArt } from "@/components/marketing/campus-line-art";
-import { ScheduleDashboard } from "@/components/marketing/previews/schedule-dashboard";
-import { SAMPLE_DATASET } from "@/components/marketing/previews/sample-data";
-
-const datasetFacts = [
-  { value: SAMPLE_DATASET.subjects, label: "Subjects" },
-  { value: SAMPLE_DATASET.rooms, label: "Rooms & labs" },
-  { value: SAMPLE_DATASET.timeSlots, label: "Time slots" },
-  { value: SAMPLE_DATASET.studentGroups, label: "Student groups" },
-];
 
 export function HeroSection() {
-  const ref = useRef<HTMLElement>(null);
+  const [isRevealed, setIsRevealed] = useState(false);
 
-  useGsap(
-    (gsap) => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(
-        "[data-hero='copy']",
-        { y: 18, autoAlpha: 0 },
-        { y: 0, autoAlpha: 1, duration: 0.8, stagger: 0.08 }
-      )
-        .fromTo(
-          "[data-hero='art']",
-          { autoAlpha: 0 },
-          { autoAlpha: 1, duration: 1.2, ease: "power2.out" },
-          0.1
-        )
-        .fromTo(
-          "[data-hero='preview']",
-          { y: 36, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 1, ease: "power3.out" },
-          0.25
-        )
-        .fromTo(
-          "[data-hero='callout']",
-          { y: 12, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.6 },
-          0.85
-        );
-    },
-    [],
-    { scope: ref }
-  );
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsRevealed(true);
+      window.dispatchEvent(new CustomEvent("hero-animation-start"));
+    }, 180);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <section
-      ref={ref}
-      aria-labelledby="hero-heading"
-      className="relative overflow-x-clip bg-canvas pt-28 pb-20 sm:pt-32 lg:pt-36 lg:pb-28"
-    >
-      {/* Without JavaScript the entrance never runs, so keep content visible. */}
-      <noscript>
-        <style>{`.hero-enter{opacity:1!important}`}</style>
-      </noscript>
+    <section className="relative w-full min-h-[580px] lg:h-screen lg:max-h-[100dvh] overflow-hidden bg-[#eef2ff]">
 
-      <Container className="grid items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-8 xl:gap-14">
-        {/* Editorial copy */}
-        <div className="relative z-10 max-w-[560px]">
-          <div data-hero="copy" className="hero-enter">
-            <Eyebrow>Intelligent examination scheduling</Eyebrow>
+      {/* ── Full-bleed background image ──────────────────────────────── */}
+      <div className="absolute inset-0 w-full h-full">
+        <Image
+          src="/Images/BG Images/HeroSectionBG.png"
+          alt="ExamOpt Studio hero background"
+          fill
+          priority
+          quality={95}
+          className="object-cover object-right-top select-none pointer-events-none"
+        />
+      </div>
+
+      {/*
+        ── Left text block ───────────────────────────────────────────────
+        Positioned in the top ~35% of the section via pt-28~pt-40.
+        max-w-[440px] keeps text firmly inside the light left zone of the
+        background image so the dashboard visual on the right stays clear.
+      */}
+      <div className="relative z-10 w-full px-4 sm:px-8 lg:px-14 xl:px-20 pt-28 sm:pt-32 lg:pt-36 xl:pt-40">
+        <div className="max-w-[440px]">
+
+          {/* Eyebrow Badge */}
+          <div
+            className={cn(
+              "transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity]",
+              isRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            )}
+            style={{ transitionDelay: isRevealed ? "80ms" : "0ms" }}
+          >
+            <p className="inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-[#1a62ff] bg-blue-50/90 border border-blue-200/70 rounded-full px-3 py-1">
+              <span className="size-1.5 rounded-full bg-[#1a62ff] animate-pulse inline-block" />
+              AI-Powered Exam Scheduling
+            </p>
           </div>
 
-          <div data-hero="copy" className="hero-enter">
-            <DisplayHeading as="h1" size="hero" id="hero-heading" className="mt-6">
-              Examinations,
-              <br />
-              scheduled with <Em>clarity.</Em>
-            </DisplayHeading>
+          {/* Main Headline */}
+          <div
+            className={cn(
+              "transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity] mt-4",
+              isRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            )}
+            style={{ transitionDelay: isRevealed ? "200ms" : "0ms" }}
+          >
+            <h1 className="text-[2.1rem] sm:text-[2.5rem] lg:text-[2.8rem] xl:text-[3.2rem] font-bold tracking-tight text-slate-900 leading-[1.07]">
+              Smarter <br />
+              Examination <br />
+              <span className="italic font-normal text-[#1a62ff]">
+                Timetables
+              </span>
+            </h1>
           </div>
 
-          <div data-hero="copy" className="hero-enter">
-            <Lede className="mt-6 max-w-[30rem]">
-              Turn complex examination constraints into feasible, explainable timetables.
-              Coordinate rooms and student groups, compare scheduling strategies, and understand
-              why difficult schedules fail.
-            </Lede>
+          {/* Subtitle */}
+          <div
+            className={cn(
+              "transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity] mt-3",
+              isRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            )}
+            style={{ transitionDelay: isRevealed ? "320ms" : "0ms" }}
+          >
+            <p className="text-sm sm:text-[14px] text-slate-600 leading-relaxed font-normal">
+              Design conflict-free, resource-optimized exam schedules with intelligent
+              algorithms. Save time, reduce clashes, and create a better experience
+              for students and administrators.
+            </p>
           </div>
 
-          <div data-hero="copy" className="hero-enter mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* CTA Buttons */}
+          <div
+            className={cn(
+              "transform-gpu transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity] mt-6 flex flex-wrap items-center gap-3",
+              isRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            )}
+            style={{ transitionDelay: isRevealed ? "440ms" : "0ms" }}
+          >
             <Link
               href="/admin"
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "group h-11 rounded-[10px] px-5 text-[14px] font-medium shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_8px_20px_-8px_rgba(40,85,199,0.6)] hover:bg-primary/90"
-              )}
+              className="h-11 px-6 rounded-full bg-[#1a62ff] hover:bg-[#0e52e2] text-white font-semibold text-sm flex items-center gap-2 shadow-[0_6px_20px_rgba(26,98,255,0.35)] transition-all hover:scale-[1.02] hover:shadow-[0_8px_28px_rgba(26,98,255,0.45)] active:scale-[0.98]"
             >
-              Explore the Workspace
-              <ArrowRight className="transition-transform group-hover:translate-x-0.5" aria-hidden />
+              Get started
+              <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="#how-it-works"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-11 rounded-[10px] border-[#dcd9d0] bg-white/70 px-5 text-[14px] font-medium hover:bg-white"
-              )}
+              className="h-11 px-6 rounded-full bg-white/85 hover:bg-white text-slate-900 font-semibold text-sm flex items-center gap-2.5 border border-slate-200/80 shadow-sm transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
             >
-              <Play className="size-3.5 fill-primary text-primary" aria-hidden />
-              See How It Works
+              <Play className="w-3.5 h-3.5 fill-[#1a62ff] text-[#1a62ff]" />
+              Watch overview
             </a>
           </div>
 
-          <div data-hero="copy" className="hero-enter mt-12 border-t border-[#e3e0d7] pt-5">
-            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Bundled sample dataset
-            </p>
-            <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-4">
-              {datasetFacts.map((fact) => (
-                <li key={fact.label} className="min-w-0">
-                  <span className="block text-[22px] font-semibold leading-none tracking-tight tabular-nums text-foreground sm:text-2xl">
-                    {fact.value}
-                  </span>
-                  <span className="mt-1.5 block truncate text-[11.5px] text-muted-foreground sm:text-xs">
-                    {fact.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
+      </div>
 
-        {/* Product visual */}
-        <div className="relative lg:pt-20">
-          <div
-            data-hero="art"
-            className="hero-enter pointer-events-none absolute -top-10 left-1/2 w-[118%] -translate-x-1/2 sm:-top-16 lg:-top-8 lg:left-[58%] lg:w-[125%]"
-            style={{ maskImage: "linear-gradient(to bottom, black 45%, transparent 92%)" }}
-          >
-            <CampusLineArt className="w-full" />
-          </div>
-
-          <div data-hero="preview" className="hero-enter relative pt-24 sm:pt-36 lg:-mr-10 lg:pt-28 xl:-mr-20">
-            <ScheduleDashboard />
-
-            <div
-              data-hero="callout"
-              className="hero-enter absolute -bottom-20 -left-8 hidden w-[264px] rounded-xl border border-[#e3e1da] bg-white p-4 shadow-[0_18px_40px_-20px_rgba(23,32,51,0.35)] lg:block xl:-left-12"
-            >
-              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-warning">
-                <AlertTriangle className="size-3.5" aria-hidden />
-                Why is this flagged?
-              </p>
-              <p className="mt-2 text-[13px] leading-snug text-foreground">
-                BCA-302 and BCADS-302 share enrolled students and sit in the same Wednesday
-                morning session.
-              </p>
-              <p className="mt-2.5 text-[11px] text-muted-foreground">Illustrative explanation · sample data</p>
-            </div>
-          </div>
-        </div>
-      </Container>
     </section>
   );
 }

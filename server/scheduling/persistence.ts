@@ -3,6 +3,7 @@ import "server-only";
 import { querySupabase } from "@/lib/supabase";
 import type { AlgorithmId, Diagnostic, EngineConfig, RunOutcome } from "./domain";
 import type { RunResult } from "./engine";
+import type { InvigilationReport } from "./invigilation";
 import { fetchAllRows, SchedulingServiceError } from "./loader";
 import type { ScheduleMetrics } from "./metrics";
 import type { ValidationReport } from "./validator";
@@ -58,12 +59,30 @@ interface EngineMetadata {
   triggeredBy: string | null;
   validation: ValidationReport | null;
   metrics: ScheduleMetrics | null;
+  /** Engine 2.1+: invigilator allocation report. Absent on older runs. */
+  invigilation?: InvigilationReport | null;
   diagnostics: Diagnostic[];
   unscheduledExamIds: string[];
   slots_used: number;
   room_utilization_pct: number;
   soft_score_semantics: "penalty_lower_is_better";
 }
+
+export interface Publication {
+  publishedId: string;
+  version: number;
+  runId: string;
+  title: string;
+  publishedBy: string;
+  isActive: boolean;
+  publishedAt: string;
+}
+
+interface PublicationRow { published_id: string; version: number; run_id: string; title: string; published_by: string; is_active: boolean; published_at: string }
+
+const toPublication = (row: PublicationRow): Publication => ({
+  publishedId: row.published_id, version: row.version, runId: row.run_id, title: row.title, publishedBy: row.published_by, isActive: row.is_active, publishedAt: row.published_at,
+});
 
 export interface RunSummary {
   runId: string;
@@ -89,6 +108,8 @@ export interface RunSummary {
   diagnostics: Diagnostic[];
   config: EngineConfig | null;
   engineVersion: string | null;
+  /** Invigilator coverage at generation time (engine 2.1+). */
+  invigilation: { covered: number; total: number; valid: boolean } | null;
   published: { publishedId: string; version: number; title: string; isActive: boolean; publishedAt: string } | null;
 }
 
@@ -126,7 +147,7 @@ export const runStore = {
       engine: "examopt-scheduler", engineVersion: result.engineVersion, algorithmVersion: result.algorithmVersion, persistence: "writing",
       outcome: result.outcome, infeasibilityEvidence: result.infeasibilityEvidence, datasetFingerprint: result.datasetFingerprint, config: result.config,
       searchNodes: result.searchNodes, colorsUsed: result.colorsUsed, startedAt: result.startedAt, completedAt: result.completedAt, triggeredBy,
-      validation: result.validation, metrics, diagnostics: result.diagnostics.slice(0, 100), unscheduledExamIds: result.unscheduledExamIds,
+      validation: result.validation, metrics, invigilation: result.invigilation, diagnostics: result.diagnostics.slice(0, 100), unscheduledExamIds: result.unscheduledExamIds,
       slots_used: metrics?.slotsUsed ?? 0, room_utilization_pct: metrics?.seatFillPct ?? 0, soft_score_semantics: "penalty_lower_is_better",
     };
     await write("scheduling_runs", "POST", { body: {
@@ -139,7 +160,7 @@ export const runStore = {
     try {
       if (result.assignments.length) {
         await write("scheduled_exams", "POST", { body: result.assignments.map((a) => ({
-          id: `ALLOC-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`, run_id: runId, subject_id: a.examId, slot_id: a.slotId, room_id: a.roomId, assigned_students: a.students,
+          id: `ALLOC-${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`, run_id: runId, subject_id: a.examId, slot_id: a.slotId, room_id: a.roomId, assigned_students: a.students, assigned_faculty_id: a.facultyId,
         })) });
       }
       const conflictRows = [
@@ -188,14 +209,45 @@ export const runStore = {
   },
 
   async published() {
-    const result = await querySupabase<{ published_id: string; version: number; run_id: string; title: string; is_active: boolean; published_at: string }[]>(
-      "published_schedules", { useServiceRole: true, query: { select: "published_id,version,run_id,title,is_active,published_at", order: "version.desc" } },
-    );
     const map = new Map<string, RunSummary["published"]>();
-    for (const row of result.data ?? []) {
-      if (!map.has(row.run_id)) map.set(row.run_id, { publishedId: row.published_id, version: row.version, title: row.title, isActive: row.is_active, publishedAt: row.published_at });
+    for (const p of await this.publications().catch(() => [])) {
+      if (!map.has(p.runId)) map.set(p.runId, { publishedId: p.publishedId, version: p.version, title: p.title, isActive: p.isActive, publishedAt: p.publishedAt });
     }
     return map;
+  },
+
+  /** Every publication, newest version first. Older versions are history and are never deleted. */
+  async publications(): Promise<Publication[]> {
+    const result = await querySupabase<PublicationRow[]>("published_schedules", { useServiceRole: true, query: { select: "published_id,version,run_id,title,published_by,is_active,published_at", order: "version.desc" } });
+    if (result.error || !result.data) throw new SchedulingServiceError("DATA_SOURCE_UNAVAILABLE", "Could not read published schedules.", 503);
+    return result.data.map(toPublication);
+  },
+
+  /** The authoritative timetable: the highest active version. */
+  async activePublication(): Promise<Publication | null> {
+    return (await this.publications()).find((p) => p.isActive) ?? null;
+  },
+
+  /**
+   * Adds a new active version and then retires the others. The insert comes
+   * first, so a failure in between leaves two active rows rather than none;
+   * readers always take the highest active version, so they stay consistent.
+   * Gates (feasibility, live validation) are enforced by the service.
+   */
+  async publish(runId: string, title: string, publishedBy: string): Promise<{ publication: Publication; retiredVersions: number[]; retireError: string | null }> {
+    const existing = await this.publications();
+    const version = Math.max(0, ...existing.map((p) => p.version)) + 1;
+    const publishedId = `PUB-V${version}-${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`;
+    const inserted = await write<PublicationRow[]>("published_schedules", "POST", { body: { published_id: publishedId, version, run_id: runId, title, published_by: publishedBy, is_active: true } });
+    const row = inserted?.[0];
+    if (!row) throw new SchedulingServiceError("PERSISTENCE_FAILED", "The publication was not recorded.", 502);
+    let retireError: string | null = null;
+    const toRetire = existing.filter((p) => p.isActive).map((p) => p.version);
+    if (toRetire.length) {
+      try { await write("published_schedules", "PATCH", { query: { is_active: "eq.true", published_id: `neq.${publishedId}` }, body: { is_active: false } }); }
+      catch { retireError = "Older versions could not be marked inactive; readers still use the newest version."; }
+    }
+    return { publication: toPublication(row), retiredVersions: retireError ? [] : toRetire, retireError };
   },
 };
 
@@ -213,6 +265,8 @@ function toSummary(row: RunRow, published: RunSummary["published"]): RunSummary 
     datasetFingerprint: isEngine ? meta.datasetFingerprint ?? null : null, infeasibilityEvidence: isEngine ? meta.infeasibilityEvidence ?? null : null,
     validation: isEngine && meta.validation ? { valid: meta.validation.valid, violationCount: meta.validation.violationCount, placementViolationCount: meta.validation.placementViolationCount } : null,
     metrics: isEngine ? meta.metrics ?? null : null, diagnostics: isEngine ? meta.diagnostics ?? [] : [],
-    config: isEngine ? meta.config ?? null : null, engineVersion: isEngine ? meta.engineVersion ?? null : null, published,
+    config: isEngine ? meta.config ?? null : null, engineVersion: isEngine ? meta.engineVersion ?? null : null,
+    invigilation: isEngine && meta.invigilation ? { covered: meta.invigilation.covered, total: meta.invigilation.total, valid: meta.invigilation.valid } : null,
+    published,
   };
 }

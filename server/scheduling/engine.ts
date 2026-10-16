@@ -4,6 +4,7 @@ import {
   DEFAULT_CONFIG, ENGINE_VERSION,
   type AlgorithmId, type Assignment, type Diagnostic, type EngineConfig, type InfeasibilityEvidence, type RunOutcome, type SchedulingInput,
 } from "./domain";
+import { allocateInvigilators, validateInvigilation, type InvigilationReport } from "./invigilation";
 import { computeMetrics, type ScheduleMetrics } from "./metrics";
 import { buildModel, type SchedulingModel } from "./model";
 import { runPreflight, type PreflightResult } from "./preflight";
@@ -20,6 +21,8 @@ export interface PreparedDataset {
 export interface AssignmentDetail extends Assignment {
   students: number;
   roomCapacity: number;
+  /** Allocated invigilator, or null when none was eligible or no faculty data was supplied. */
+  facultyId: string | null;
 }
 
 export interface RunResult {
@@ -42,6 +45,8 @@ export interface RunResult {
   unscheduledExamIds: string[];
   validation: ValidationReport | null;
   metrics: ScheduleMetrics | null;
+  /** Null when the input has no faculty roster or the solver did not run. */
+  invigilation: InvigilationReport | null;
   diagnostics: Diagnostic[];
 }
 
@@ -52,6 +57,8 @@ export function fingerprintInput(input: SchedulingInput) {
     rooms: [...input.rooms].sort((a, b) => a.id.localeCompare(b.id)).map((r) => [r.id, r.capacity, r.roomType, [...r.unavailableSlotIds].sort()]),
     slots: [...input.slots].sort((a, b) => a.id.localeCompare(b.id)).map((s) => [s.id, s.date, s.startMinutes, s.endMinutes]),
     enrollments: input.enrollments.map((e) => `${e.studentId}|${e.examId}`).sort(),
+    // Faculty only joined the input in engine 2.1; omitted when absent so exam-only datasets keep their fingerprint.
+    ...(input.invigilators?.length ? { invigilators: [...input.invigilators].sort((a, b) => a.id.localeCompare(b.id)).map((f) => [f.id, f.department, f.maxDuties, [...f.unavailableSlotIds].sort()]) } : {}),
   });
   let hash = 0x811c9dc5;
   for (let i = 0; i < canonical.length; i++) {
@@ -103,19 +110,31 @@ export function runAlgorithm(dataset: PreparedDataset, algorithmId: AlgorithmId,
       infeasibilityEvidence: dataset.preflight.hasDataErrors ? null : "necessary-condition",
       solverRan: false, searchNodes: null, colorsUsed: null, assignments: [],
       unscheduledExamIds: dataset.model.exams.map((exam) => exam.id),
-      validation: null, metrics: null, diagnostics: preflightDiagnostics,
+      validation: null, metrics: null, invigilation: null, diagnostics: preflightDiagnostics,
     };
   }
 
   const solved = algorithm.solve(dataset.model, config);
   const timing = finish();
   const validation = validateSchedule(dataset.input, solved.assignments);
-  const metrics = computeMetrics(dataset.input, solved.assignments, config.weights);
-
   const { outcome, evidence } = classifyOutcome(validation, solved);
+  const metrics = computeMetrics(dataset.input, solved.assignments, config.weights, outcome === "FEASIBLE");
+
+  // Invigilators are allocated on the final schedule and checked independently; they never change the outcome.
+  const duties = dataset.input.invigilators?.length ? allocateInvigilators(dataset.input, solved.assignments) : null;
+  const invigilation = duties ? validateInvigilation(dataset.input, duties) : null;
+  const facultyOf = new Map((duties ?? []).map((d) => [d.examId, d.facultyId]));
+
   const diagnostics = [...preflightDiagnostics.filter((d) => d.severity !== "info"), ...solved.diagnostics];
   if (outcome === "INVALID") {
     diagnostics.push({ code: "VALIDATION_FAILED", severity: "error", kind: "search", message: `The independent validator rejected this schedule with ${validation.placementViolationCount} hard-constraint violation${validation.placementViolationCount > 1 ? "s" : ""}. It must not be published.`, remediation: "Inspect the violations; this indicates a solver defect." });
+  }
+  if (invigilation?.uncoveredExamIds.length) {
+    diagnostics.push({
+      code: "INVIGILATOR_SHORTAGE", severity: "warning", kind: "constraint", constraint: "Invigilator availability",
+      message: `${invigilation.uncoveredExamIds.length} examination${invigilation.uncoveredExamIds.length > 1 ? "s have" : " has"} no eligible invigilator: every faculty member is busy, unavailable or at their duty cap in that slot.`,
+      examIds: invigilation.uncoveredExamIds, remediation: "Raise duty caps, clear faculty unavailability, or add faculty. The exam schedule itself is unaffected.",
+    });
   }
 
   const studentCount = dataset.model.graph.studentCount;
@@ -126,8 +145,9 @@ export function runAlgorithm(dataset: PreparedDataset, algorithmId: AlgorithmId,
       ...a,
       students: studentCount[dataset.model.examIndex.get(a.examId)!],
       roomCapacity: dataset.model.rooms[dataset.model.roomIndex.get(a.roomId)!].capacity,
+      facultyId: facultyOf.get(a.examId) ?? null,
     })),
-    unscheduledExamIds: solved.unscheduledExamIds, validation, metrics, diagnostics,
+    unscheduledExamIds: solved.unscheduledExamIds, validation, metrics, invigilation, diagnostics,
   };
 }
 

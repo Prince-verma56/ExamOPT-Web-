@@ -37,11 +37,26 @@ export interface ScheduleMetrics {
   /** Slots used / span from first to last used slot. 100% means no idle slot inside the exam window. */
   compactnessPct: number;
   softPenalty: { total: number; components: PenaltyComponent[] };
+  /**
+   * The reference backend's 0-100 quality score (`optimizer.py` `_compute_soft_score`),
+   * reported for comparison only; ExamOpt ranks by feasibility, then soft penalty.
+   * Null when feasibility was not supplied.
+   */
+  referenceScore: number | null;
 }
 
 const round = (value: number, digits = 2) => Math.round(value * 10 ** digits) / 10 ** digits;
 
-export function computeMetrics(input: SchedulingInput, assignments: Assignment[], weights: SoftWeights): ScheduleMetrics {
+/**
+ * Reference score: an infeasible run scores (scheduled / total) x 40. A feasible run scores
+ * 0.4 x min(100, seat fill %) + 0.3 x (1 - slots used / slots available) x 100 + 30.
+ */
+export function referenceQualityScore(m: Pick<ScheduleMetrics, "scheduledExams" | "totalExams" | "seatFillPct" | "slotsUsed" | "totalSlots">, feasible: boolean) {
+  if (!feasible) return round((m.scheduledExams / Math.max(1, m.totalExams)) * 40);
+  return round(Math.min(100, m.seatFillPct) * 0.4 + Math.max(0, 1 - m.slotsUsed / Math.max(1, m.totalSlots)) * 100 * 0.3 + 30);
+}
+
+export function computeMetrics(input: SchedulingInput, assignments: Assignment[], weights: SoftWeights, feasible?: boolean): ScheduleMetrics {
   const slots = [...input.slots].sort(compareSlots);
   const slotPos = new Map(slots.map((slot, i) => [slot.id, i]));
   const slotDate = new Map(slots.map((slot) => [slot.id, slot.date]));
@@ -98,7 +113,7 @@ export function computeMetrics(input: SchedulingInput, assignments: Assignment[]
     { key: "daysUsed", label: "Examination days used", value: days.size, weight: weights.daysUsed, penalty: 0 },
   ].map((c) => ({ ...(c as PenaltyComponent), penalty: round(c.value * c.weight) }));
 
-  return {
+  const base = {
     scheduledExams: assignments.length,
     totalExams: input.exams.length,
     slotsUsed: usedPositions.length,
@@ -116,4 +131,5 @@ export function computeMetrics(input: SchedulingInput, assignments: Assignment[]
     compactnessPct: span ? round((usedPositions.length / span) * 100) : 0,
     softPenalty: { total: round(components.reduce((sum, c) => sum + c.penalty, 0)), components },
   };
+  return { ...base, referenceScore: feasible === undefined ? null : referenceQualityScore(base, feasible) };
 }

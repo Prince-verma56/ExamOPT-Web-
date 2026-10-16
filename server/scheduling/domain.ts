@@ -6,7 +6,7 @@
  * route handlers, the Test Lab and Vitest.
  */
 
-export const ENGINE_VERSION = "2.0.0";
+export const ENGINE_VERSION = "2.1.0";
 
 export type AlgorithmId = "FIRST_FIT" | "WELSH_POWELL" | "BACKTRACKING";
 export const ALGORITHM_IDS: AlgorithmId[] = ["FIRST_FIT", "WELSH_POWELL", "BACKTRACKING"];
@@ -54,11 +54,22 @@ export interface Enrollment {
   isBacklog: boolean;
 }
 
+/** A faculty member who can invigilate (reference `faculty` table). */
+export interface Invigilator {
+  id: string;
+  name: string;
+  department: string;
+  unavailableSlotIds: string[];
+  maxDuties: number;
+}
+
 export interface SchedulingInput {
   exams: Exam[];
   rooms: Room[];
   slots: Slot[];
   enrollments: Enrollment[];
+  /** Optional. When present, invigilators are allocated after the exam schedule is final. */
+  invigilators?: Invigilator[];
 }
 
 export interface Assignment {
@@ -106,7 +117,8 @@ export type DiagnosticCode =
   | "UNSCHEDULED_EXAM"
   | "SEARCH_LIMIT_REACHED"
   | "SEARCH_EXHAUSTED"
-  | "VALIDATION_FAILED";
+  | "VALIDATION_FAILED"
+  | "INVIGILATOR_SHORTAGE";
 
 export type DiagnosticKind = "data" | "constraint" | "search";
 

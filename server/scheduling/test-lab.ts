@@ -1,7 +1,11 @@
-import { ALGORITHM_IDS, type AlgorithmId, type Diagnostic, type RunOutcome, type SchedulingInput } from "./domain";
+import { validateDataQuality } from "./data-quality";
+import { ALGORITHM_IDS, type AlgorithmId, type Diagnostic, type Invigilator, type RunOutcome, type SchedulingInput } from "./domain";
 import { mergeConfig, prepareDataset, runAlgorithm, type RunResult } from "./engine";
 import { campusMini, cohort, exam, oddCycle, pairedTwelve, room, slot } from "./fixtures";
+import { allocateInvigilators, validateInvigilation } from "./invigilation";
 import { normalizeDataset } from "./normalize";
+import { publishGate } from "./publication";
+import { referenceQualityTables, referenceRawDataset, REFERENCE_VARIANTS, type ReferenceVariant } from "./reference-dataset";
 import { validateSchedule, type ViolationCode } from "./validator";
 
 export interface TestCaseResult {
@@ -20,7 +24,7 @@ export interface TestCaseResult {
 interface TestCase {
   id: string;
   name: string;
-  category: "Feasible" | "Conflicts" | "Capacity" | "Constraints" | "Data quality" | "Search" | "Validator";
+  category: "Feasible" | "Conflicts" | "Capacity" | "Constraints" | "Data quality" | "Search" | "Validator" | "Reference" | "Invigilation" | "Publication";
   expected: string;
   run(): { checks: { label: string; passed: boolean }[]; actual: string; runs?: RunResult[]; diagnostics?: Diagnostic[] };
 }
@@ -51,6 +55,132 @@ function infeasibleCase(id: string, name: string, category: TestCase["category"]
     },
   };
 }
+
+/** A reference edge-case file: the data quality report must flag `qualityCode`, and the engine must refuse it for the stated reason. */
+function referenceEdgeCase(variant: ReferenceVariant, name: string, qualityCodes: string[], engine: { outcome: RunOutcome; codes: Diagnostic["code"][]; extraBigCourseStudents?: number; note?: string }): TestCase {
+  return {
+    id: `reference-${variant.replace(/_/g, "-")}`, name, category: "Reference",
+    expected: `Reference file ${REFERENCE_VARIANTS[variant].file}: the data quality report fails with ${qualityCodes.join(", ")} (as in the reference tests), and every algorithm reports ${engine.outcome} with ${engine.codes.join(" or ")}.${engine.note ? ` ${engine.note}` : ""}`,
+    run() {
+      const quality = validateDataQuality(referenceQualityTables(variant));
+      const found = new Set(quality.errors.map((e) => e.code));
+      const runs = runAll(normalizeDataset(referenceRawDataset(variant, { extraBigCourseStudents: engine.extraBigCourseStudents })));
+      const diagCodes = codes(runs[0].diagnostics);
+      return {
+        runs, diagnostics: runs[0].diagnostics,
+        actual: `quality: ${quality.status}, score ${quality.readinessScore}, errors ${[...found].join(", ")} · ${outcomes(runs)} · ${diagCodes.join(", ")}`,
+        checks: [
+          { label: "Data quality report fails", passed: !quality.isValid && quality.status === "VALIDATION_FAILED" },
+          ...qualityCodes.map((code) => ({ label: `Reference code ${code} reported`, passed: found.has(code) })),
+          { label: `All outcomes ${engine.outcome}`, passed: runs.every((r) => r.outcome === engine.outcome) },
+          { label: `Engine reports ${engine.codes.join(" or ")}`, passed: engine.codes.some((c) => diagCodes.includes(c)) },
+          { label: "No schedule produced", passed: runs.every((r) => r.assignments.length === 0) },
+        ],
+      };
+    },
+  };
+}
+
+const sharedBetween = (input: SchedulingInput, a: string, b: string) => {
+  const of = (id: string) => new Set(input.enrollments.filter((e) => e.examId === id).map((e) => e.studentId));
+  const sa = of(a), sb = of(b);
+  return [...sa].filter((s) => sb.has(s)).length;
+};
+
+/** Cases ported from the reference backend's tests and fixtures, plus invigilation and publication. */
+const PORTED_CASES: TestCase[] = [
+  {
+    id: "reference-gla-normal", name: "Reference GLA dataset (equivalence)", category: "Reference",
+    expected: "On the reference GLA dataset: BCA-101↔MCA-101 share 20 students and BCADS-301↔BCADS-501 share 25; Welsh-Powell and backtracking are FEASIBLE with 24/24 exams, 0 violations, capacities and laboratories respected; the data quality score is 100; invigilation breaks no rule.",
+    run() {
+      const input = normalizeDataset(referenceRawDataset("normal"));
+      const dataset = prepareDataset(input);
+      const runs = ALGORITHM_IDS.map((a) => runAlgorithm(dataset, a));
+      const wp = runs.find((r) => r.algorithm === "WELSH_POWELL")!, bt = runs.find((r) => r.algorithm === "BACKTRACKING")!;
+      const quality = validateDataQuality(referenceQualityTables("normal"));
+      const roomType = new Map(input.rooms.map((r) => [r.id, r.roomType]));
+      const labOf = new Set(input.exams.filter((e) => e.requiredRoomType === "LAB").map((e) => e.id));
+      const e = dataset.model.examIndex, g = dataset.model.graph;
+      const w1 = g.shared[e.get("BCA-101")!][e.get("MCA-101")!], w2 = g.shared[e.get("BCADS-301")!][e.get("BCADS-501")!];
+      return {
+        runs, diagnostics: runs.flatMap((r) => r.diagnostics),
+        actual: `edges BCA-101↔MCA-101 = ${w1}, BCADS-301↔BCADS-501 = ${w2} · ${outcomes(runs)} · quality ${quality.readinessScore} · invigilation ${bt.invigilation?.covered}/${bt.invigilation?.total}`,
+        checks: [
+          { label: "BCA-101↔MCA-101 share 20 students (reference)", passed: w1 === 20 && sharedBetween(input, "BCA-101", "MCA-101") === 20 },
+          { label: "BCADS-301↔BCADS-501 share 25 students (reference)", passed: w2 === 25 },
+          { label: "Welsh-Powell FEASIBLE, 24/24, 0 violations", passed: wp.outcome === "FEASIBLE" && wp.assignments.length === 24 && wp.validation?.placementViolationCount === 0 },
+          { label: "No conflicting exams share a slot (Welsh-Powell)", passed: g.edges.every(({ a, b }) => wp.assignments.find((x) => x.examId === dataset.model.exams[a].id)?.slotId !== wp.assignments.find((x) => x.examId === dataset.model.exams[b].id)?.slotId) },
+          { label: "Backtracking FEASIBLE, 24/24, nodes > 0", passed: bt.outcome === "FEASIBLE" && bt.assignments.length === 24 && (bt.searchNodes ?? 0) > 0 },
+          { label: "Capacity respected and labs in LAB rooms (backtracking)", passed: bt.assignments.every((a) => a.roomCapacity >= a.students && (labOf.has(a.examId) ? roomType.get(a.roomId) === "LAB" : roomType.get(a.roomId) === "THEORY")) },
+          { label: "Benchmark covers all three algorithms", passed: new Set(runs.map((r) => r.algorithm)).size === 3 },
+          { label: "Data quality: valid, readiness 100", passed: quality.isValid && quality.readinessScore === 100 },
+          { label: "Invigilation breaks no rule (feasible runs)", passed: runs.filter((r) => r.outcome === "FEASIBLE").every((r) => r.invigilation?.valid === true) },
+        ],
+      };
+    },
+  },
+  referenceEdgeCase("invalid_corrupted", "Reference corrupted input", ["DUPLICATE_SUBJECT_ID", "NEGATIVE_ENROLLMENT", "CONTRADICTORY_CONSTRAINTS", "FOREIGN_KEY_NOT_FOUND"], { outcome: "INVALID_INPUT", codes: ["DUPLICATE_IDENTIFIER", "MISSING_REFERENCE"] }),
+  referenceEdgeCase("lab_bottleneck", "Reference laboratory bottleneck", ["LAB_BOTTLENECK"], { outcome: "INFEASIBLE", codes: ["LABORATORY_UNAVAILABLE", "FIXED_SLOT_CONFLICT"] }),
+  referenceEdgeCase("capacity_overflow", "Reference capacity overflow", ["CAPACITY_OVERFLOW"], {
+    outcome: "INFEASIBLE", codes: ["ROOM_CAPACITY_BOTTLENECK"], extraBigCourseStudents: 570,
+    note: "The engine schedules from actual enrollments, so 570 BCA-101-only students are added to make the declared 650 real.",
+  }),
+  {
+    id: "invigilation-rules", name: "Invigilator allocation rules", category: "Invigilation",
+    expected: "Invigilators are never double-booked, never used in an unavailable slot and never pushed past their duty cap; the program's department is preferred; an exam with no eligible invigilator is left uncovered without changing schedule feasibility; a tampered duty list is caught.",
+    run() {
+      const faculty: Invigilator[] = [
+        { id: "F1", name: "F1", department: "BCA", unavailableSlotIds: [], maxDuties: 1 },
+        { id: "F2", name: "F2", department: "MCA", unavailableSlotIds: ["S1"], maxDuties: 2 },
+        { id: "F3", name: "F3", department: "CSED", unavailableSlotIds: [], maxDuties: 2 },
+      ];
+      const input: SchedulingInput = {
+        slots: [slot("S1", "2026-11-02"), slot("S2", "2026-11-02", "14:00", "17:00")], rooms: [room("R1", 80), room("R2", 80), room("R3", 80)],
+        exams: [exam("A-1"), exam("B-1", { program: "MCA" }), exam("C-1", { program: "BCA-DS" }), exam("D-1")],
+        enrollments: [], invigilators: faculty,
+      };
+      const placed = [{ examId: "A-1", slotId: "S1", roomId: "R1" }, { examId: "B-1", slotId: "S1", roomId: "R2" }, { examId: "C-1", slotId: "S1", roomId: "R3" }, { examId: "D-1", slotId: "S2", roomId: "R1" }];
+      const duties = allocateInvigilators(input, placed);
+      const by = Object.fromEntries(duties.map((d) => [d.examId, d.facultyId]));
+      const report = validateInvigilation(input, duties);
+      const tampered = validateInvigilation(input, duties.map((d) => ({ ...d, facultyId: d.examId === "C-1" || d.examId === "D-1" ? "F1" : d.examId === "B-1" ? "F2" : d.facultyId })));
+      const tamperedCodes = new Set(tampered.violations.map((v) => v.code));
+      const shortage = runAlgorithm(prepareDataset({ ...input, exams: [exam("A-1"), exam("D-1")], invigilators: [faculty[0]], enrollments: cohort("X", 10, ["A-1", "D-1"]) }), "BACKTRACKING");
+      return {
+        runs: [shortage], diagnostics: shortage.diagnostics,
+        actual: `A-1→${by["A-1"]}, B-1→${by["B-1"]}, C-1→${by["C-1"] ?? "uncovered"}, D-1→${by["D-1"]} · coverage ${report.covered}/${report.total} · tampered: ${[...tamperedCodes].join(", ")} · shortage run: ${shortage.outcome}`,
+        checks: [
+          { label: "Department preferred (A-1 → BCA faculty F1)", passed: by["A-1"] === "F1" },
+          { label: "Unavailable faculty skipped (B-1 not F2 in S1)", passed: by["B-1"] === "F3" },
+          { label: "No eligible invigilator → uncovered (C-1)", passed: by["C-1"] === null && report.uncoveredExamIds.join() === "C-1" },
+          { label: "Duty cap respected (D-1 not F1)", passed: by["D-1"] === "F2" },
+          { label: "Allocation passes the invigilation validator", passed: report.valid },
+          { label: "Tampered duties flag double booking, unavailability and overload", passed: ["INVIGILATOR_DOUBLE_BOOKED", "INVIGILATOR_UNAVAILABLE", "INVIGILATOR_OVERLOADED"].every((c) => tamperedCodes.has(c as never)) },
+          { label: "Shortage leaves the schedule FEASIBLE with an INVIGILATOR_SHORTAGE warning", passed: shortage.outcome === "FEASIBLE" && shortage.diagnostics.some((d) => d.code === "INVIGILATOR_SHORTAGE") },
+        ],
+      };
+    },
+  },
+  {
+    id: "publication-gate", name: "Publication gate", category: "Publication",
+    expected: "Only an engine-generated FEASIBLE run whose saved assignments still pass validation against today's data (and whose invigilation is valid) can be published; legacy, partial, stale and already-active runs are refused with reasons.",
+    run() {
+      const ok = { source: "engine" as const, outcome: "FEASIBLE" as RunOutcome, storedValid: true, liveValidation: { valid: true, violationCount: 0 }, invigilation: { valid: true, violations: 0 }, isActivePublication: false };
+      const cases = [
+        { label: "Feasible, validated engine run is allowed", gate: publishGate(ok), allowed: true, code: null },
+        { label: "Legacy run refused (LEGACY_RUN)", gate: publishGate({ ...ok, source: "legacy", storedValid: null }), allowed: false, code: "LEGACY_RUN" },
+        { label: "Partial run refused (NOT_FEASIBLE)", gate: publishGate({ ...ok, outcome: "PARTIAL" }), allowed: false, code: "NOT_FEASIBLE" },
+        { label: "Run invalid against today's data refused (LIVE_VALIDATION_FAILED)", gate: publishGate({ ...ok, liveValidation: { valid: false, violationCount: 2 } }), allowed: false, code: "LIVE_VALIDATION_FAILED" },
+        { label: "Invalid invigilation refused (INVIGILATION_INVALID)", gate: publishGate({ ...ok, invigilation: { valid: false, violations: 1 } }), allowed: false, code: "INVIGILATION_INVALID" },
+        { label: "Already active refused (ALREADY_ACTIVE)", gate: publishGate({ ...ok, isActivePublication: true }), allowed: false, code: "ALREADY_ACTIVE" },
+      ];
+      return {
+        actual: cases.map((c) => `${c.gate.allowed ? "allowed" : c.gate.rejections.map((r) => r.code).join("+")}`).join(" · "),
+        checks: cases.map((c) => ({ label: c.label, passed: c.gate.allowed === c.allowed && (c.code === null || c.gate.rejections.some((r) => r.code === c.code)) })),
+      };
+    },
+  },
+];
 
 export const TEST_CASES: TestCase[] = [
   {
@@ -251,6 +381,7 @@ export const TEST_CASES: TestCase[] = [
       return { runs: a, actual: same ? "Assignments identical across repeated runs" : "Assignments differed", checks: [{ label: "Identical assignments", passed: same }, { label: "Identical dataset fingerprint", passed: a[0].datasetFingerprint === b[0].datasetFingerprint }] };
     },
   },
+  ...PORTED_CASES,
 ];
 
 export function runTestLab(caseIds?: string[]): TestCaseResult[] {

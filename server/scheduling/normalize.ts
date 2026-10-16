@@ -1,4 +1,4 @@
-import type { Enrollment, Exam, Room, SchedulingInput, Slot } from "./domain";
+import type { Enrollment, Exam, Invigilator, Room, SchedulingInput, Slot } from "./domain";
 
 /**
  * Raw rows from the canonical C10 tables (see docs/examopt/PHASE_2_DATA_AUDIT.md).
@@ -11,6 +11,8 @@ export interface RawDataset {
   studentGroups: { group_id: string; program: string; semester: number; is_backlog_group?: boolean }[];
   students: { roll_no: string; group_id: string; has_backlog?: boolean }[];
   enrollments: { roll_no: string; subject_id: string }[];
+  /** Optional: invigilation is skipped when absent. */
+  faculty?: { faculty_id: string; name: string; department: string; unavailable_slots: string | null; max_duties: number }[];
 }
 
 /** Splits a delimited slot list such as "D2-M", "D1-M|D4-E" or "D1-M, D3-E". */
@@ -84,5 +86,13 @@ export function normalizeDataset(raw: RawDataset): SchedulingInput {
     return { studentId: row.roll_no, examId: row.subject_id, groupId, isBacklog };
   });
 
-  return { exams, rooms, slots, enrollments };
+  const invigilators: Invigilator[] | undefined = raw.faculty?.map((row) => ({
+    id: row.faculty_id,
+    name: row.name,
+    department: String(row.department ?? "").toUpperCase(),
+    unavailableSlotIds: parseSlotList(row.unavailable_slots),
+    maxDuties: Math.max(0, Number(row.max_duties) || 0),
+  }));
+
+  return { exams, rooms, slots, enrollments, ...(invigilators ? { invigilators } : {}) };
 }

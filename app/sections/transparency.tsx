@@ -1,23 +1,30 @@
 /**
- * Transparent by design — why ExamOpt is trustworthy: every result is
- * re-validated and every failure is explained. Previews use sample data.
+ * ExamOpt Studio — Transparent by Design Section
+ * Background: /Images/BG Images/Futuristic Exam Validation Dashboard.png
+ * Layout matches reference design:
+ * • Background shows 3D glass validation dashboard on the right
+ * • Editorial text and 3 feature points anchored cleanly on the left
  */
 
-import { Container, DisplayHeading, Em, Eyebrow, Lede } from "@/components/marketing/primitives";
-import { Reveal } from "@/components/marketing/reveal";
-import { ConflictGraphPreview } from "@/components/marketing/previews/conflict-graph";
-import { ValidationSummaryPreview } from "@/components/marketing/previews/validation-summary";
+"use client";
 
-const principles = [
+import Image from "next/image";
+import { Lock, FileSearch, ShieldCheck } from "lucide-react";
+import { Reveal } from "@/components/marketing/reveal";
+
+const PRINCIPLES = [
   {
+    icon: Lock,
     title: "Hard constraints are never traded away",
     body: "Capacity, labs, fixed slots and student clashes are checked independently of the strategy that built the timetable.",
   },
   {
+    icon: FileSearch,
     title: "Every failure names its cause",
     body: "When a schedule is infeasible, the report points to the constraint and the exams responsible.",
   },
   {
+    icon: ShieldCheck,
     title: "No claims before validation",
     body: "ExamOpt reports a timetable as conflict-free only after the validator has actually run.",
   },
@@ -25,49 +32,82 @@ const principles = [
 
 export function TransparencySection() {
   return (
-    <section id="transparency" aria-labelledby="transparency-heading" className="scroll-mt-20 border-t border-[#ebe8df] bg-canvas py-20 lg:py-28">
-      <Container className="grid gap-14 lg:grid-cols-12 lg:gap-12">
-        <Reveal className="lg:col-span-5">
-          <div data-reveal>
-            <Eyebrow>Transparent by design</Eyebrow>
-            <DisplayHeading id="transparency-heading" className="mt-5">
-              Understand <Em>every</Em> decision.
-            </DisplayHeading>
-            <Lede className="mt-6 max-w-[34rem]">
-              ExamOpt is designed to validate every timetable against your constraints and to
-              explain conflicts and infeasible scenarios in plain language.
-            </Lede>
-          </div>
-          <ol data-reveal className="mt-10 space-y-6">
-            {principles.map((p, i) => (
-              <li key={p.title} className="grid grid-cols-[28px_1fr] gap-3">
-                <span className="font-display text-xl leading-6 text-primary">{i + 1}</span>
-                <div>
-                  <p className="text-[15px] font-semibold tracking-tight text-foreground">{p.title}</p>
-                  <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{p.body}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </Reveal>
+    <section
+      id="transparency"
+      aria-labelledby="transparency-heading"
+      className="relative w-full min-h-[700px] lg:h-[860px] flex items-center overflow-hidden border-t border-[#ebe8df] bg-[#eff3fa] scroll-mt-20"
+    >
+      {/* ── Background: Futuristic Glass Dashboard ──────────────────────── */}
+      <div className="absolute inset-0 w-full h-full select-none pointer-events-none">
+        <Image
+          src="/Images/BG Images/Futuristic Exam Validation Dashboard.png"
+          alt="ExamOpt Studio 3D Glass Validation Dashboard"
+          fill
+          quality={95}
+          className="object-cover object-right select-none pointer-events-none"
+        />
+        {/* Subtle mobile fade so text remains 100% legible on small screens where image stacks */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent lg:hidden pointer-events-none" />
+      </div>
 
-        <Reveal className="lg:col-span-7" y={24}>
-          <figure data-reveal className="overflow-hidden rounded-2xl border border-[#e6e2d8] bg-white shadow-[0_1px_2px_rgba(23,32,51,0.03),0_30px_60px_-40px_rgba(23,32,51,0.35)]">
-            <div className="grid md:grid-cols-2 md:divide-x md:divide-[#ece9e1]">
-              <div className="border-b border-[#ece9e1] p-5 sm:p-6 md:border-b-0">
-                <ConflictGraphPreview />
-              </div>
-              <div className="p-5 sm:p-6">
-                <ValidationSummaryPreview />
-              </div>
+      {/* ── Left-Anchored Editorial Content ────────────────────────────── */}
+      <div className="relative z-10 w-full px-4 sm:px-8 lg:px-14 xl:px-20 py-20 lg:py-0">
+        <div className="max-w-[480px]">
+          <Reveal>
+            {/* Eyebrow */}
+            <div data-reveal>
+              <p className="inline-flex items-center gap-2 text-[10.5px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-[#1a62ff]">
+                <span className="w-5 h-px bg-[#1a62ff]/60 inline-block" />
+                Transparent by Design
+              </p>
             </div>
-            <figcaption className="border-t border-[#ece9e1] bg-[#fbfaf7] px-5 py-3 text-[12px] text-muted-foreground sm:px-6">
-              Illustrative sample report. The graph and the summary describe the same sample
-              timetable — values are not produced by the scheduling engine, which is in development.
-            </figcaption>
-          </figure>
-        </Reveal>
-      </Container>
+
+            {/* Headline */}
+            <div data-reveal className="mt-4">
+              <h2
+                id="transparency-heading"
+                className="text-[2.2rem] sm:text-[2.8rem] lg:text-[3.2rem] font-bold tracking-tight text-slate-900 leading-[1.08]"
+              >
+                Every decision,{" "}
+                <br className="hidden sm:block" />
+                <span className="font-normal italic text-[#1a62ff]">
+                  explained.
+                </span>
+              </h2>
+            </div>
+
+            {/* Description */}
+            <div data-reveal className="mt-4">
+              <p className="text-sm sm:text-[15px] text-slate-600 leading-relaxed font-normal">
+                ExamOpt validates each timetable against your constraints and makes
+                conflicts and infeasible schedules understandable.
+              </p>
+            </div>
+
+            {/* 3 Principles with Icons */}
+            <div data-reveal className="mt-8 sm:mt-10 space-y-6">
+              {PRINCIPLES.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="flex items-start gap-4">
+                  {/* Icon circle */}
+                  <div className="size-11 rounded-2xl bg-white/90 border border-blue-200/70 shadow-[0_2px_8px_rgba(26,98,255,0.08)] flex items-center justify-center shrink-0">
+                    <Icon className="size-5 text-[#1a62ff]" />
+                  </div>
+
+                  {/* Text */}
+                  <div>
+                    <h3 className="text-[14px] sm:text-[14.5px] font-bold text-slate-900 leading-snug">
+                      {title}
+                    </h3>
+                    <p className="mt-1 text-[12.5px] sm:text-[13px] text-slate-600 leading-relaxed">
+                      {body}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </div>
     </section>
   );
 }

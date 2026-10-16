@@ -44,6 +44,9 @@ export interface RunRow {
   config: EngineConfig | null;
   persisted: boolean;
   persistenceError: string | null;
+  /** Reference backend's 0-100 score (higher is better); reported, never used to rank. */
+  referenceScore: number | null;
+  invigilation: { covered: number; total: number; valid: boolean } | null;
 }
 
 export function rowFromResult(entry: { runId: string | null; persisted: boolean; persistenceError: string | null; result: RunResult }): RunRow {
@@ -55,6 +58,7 @@ export function rowFromResult(entry: { runId: string | null; persisted: boolean;
     slotsUsed: m?.slotsUsed ?? null, daysUsed: m?.daysUsed ?? null, fill: m?.seatFillPct ?? null, timeMs: r.durationMs, nodes: r.searchNodes,
     createdAt: r.startedAt, fingerprint: r.datasetFingerprint, published: null, diagnostics: r.diagnostics, checks: r.validation?.checks ?? null,
     unscheduled: r.unscheduledExamIds, config: r.config, persisted: entry.persisted, persistenceError: entry.persistenceError,
+    referenceScore: m?.referenceScore ?? null, invigilation: r.invigilation ? { covered: r.invigilation.covered, total: r.invigilation.total, valid: r.invigilation.valid } : null,
   };
 }
 
@@ -67,6 +71,7 @@ export function rowFromSummary(s: RunSummary): RunRow {
     slotsUsed: m?.slotsUsed ?? null, daysUsed: m?.daysUsed ?? null, fill: m?.seatFillPct ?? null, timeMs: s.executionTimeMs, nodes: s.searchNodes,
     createdAt: s.createdAt, fingerprint: s.datasetFingerprint, published: s.published, diagnostics: s.diagnostics, checks: null,
     unscheduled: [], config: s.config, persisted: true, persistenceError: null,
+    referenceScore: m?.referenceScore ?? null, invigilation: s.invigilation,
   };
 }
 
@@ -155,6 +160,7 @@ export function ComparisonTable({ rows, onOpen, caption }: { rows: RunRow[]; onO
             <TableHead className="text-right">Back-to-back</TableHead>
             <TableHead className="text-right">Slots · days</TableHead>
             <TableHead className="text-right">Seat fill</TableHead>
+            <TableHead className="text-right" title="Reference backend's 0-100 score (higher is better). Shown for comparison; ranking is feasibility first.">Ref. score</TableHead>
             <TableHead className="pr-4 text-right">Time</TableHead>
           </TableRow>
         </TableHeader>
@@ -181,6 +187,7 @@ export function ComparisonTable({ rows, onOpen, caption }: { rows: RunRow[]; onO
               <TableCell className="text-right"><Best on={isBest(r, r.backToBack, bestB2b)}>{num(r.backToBack)}</Best></TableCell>
               <TableCell className="text-right tabular-nums">{r.slotsUsed ?? "—"} · {r.daysUsed ?? "—"}</TableCell>
               <TableCell className="text-right"><Best on={isBest(r, r.fill, bestFill)}>{r.fill === null ? "—" : `${num(r.fill, 1)}%`}</Best></TableCell>
+              <TableCell className="text-right tabular-nums text-muted-foreground">{r.referenceScore === null ? "—" : num(r.referenceScore, 1)}</TableCell>
               <TableCell className="pr-4 text-right"><Best on={isBest(r, r.timeMs, bestTime)}>{ms(r.timeMs)}</Best></TableCell>
             </TableRow>
           ))}
@@ -214,6 +221,7 @@ export function RunDetailSheet({ row, onClose }: { row: RunRow | null; onClose: 
                 {[
                   ["Scheduled", `${row.scheduled}/${row.total}`], ["Hard violations", row.violations ?? "—"], ["Time", ms(row.timeMs)],
                   ["Search nodes", row.nodes === null ? "n/a" : num(row.nodes)], ["Slots · days", `${row.slotsUsed ?? "—"} · ${row.daysUsed ?? "—"}`], ["Seat fill", row.fill === null ? "—" : `${num(row.fill, 1)}%`],
+                  ["Invigilators", row.invigilation ? `${row.invigilation.covered}/${row.invigilation.total}${row.invigilation.valid ? "" : " · invalid"}` : "—"], ["Reference score", row.referenceScore === null ? "—" : `${num(row.referenceScore, 1)} / 100`], ["Soft penalty", row.penalty === null ? "—" : num(row.penalty, 2)],
                 ].map(([label, value]) => (
                   <div key={label as string} className="bg-card px-3 py-2.5"><dt className="text-[11px] text-muted-foreground">{label}</dt><dd className="mt-0.5 font-semibold tabular-nums">{value}</dd></div>
                 ))}
